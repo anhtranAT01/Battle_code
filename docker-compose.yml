@@ -1,0 +1,45 @@
+services:
+  app:
+    build: .
+    container_name: battlecode_web
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://battlecode_user:battlecode_pass123@db:5432/battlecode_db
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - bots_storage:/app/bots
+      - replays_storage:/app/replays
+    networks:
+      - battlecode_net
+
+  db:
+    image: postgres:16-alpine
+    container_name: battlecode_db
+    restart: always
+    environment:
+      POSTGRES_USER: battlecode_user
+      POSTGRES_PASSWORD: battlecode_pass123
+      POSTGRES_DB: battlecode_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - battlecode_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U battlecode_user -d battlecode_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  bots_storage:
+  replays_storage:
+
+networks:
+  battlecode_net:
+    driver: bridge
