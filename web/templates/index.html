@@ -28,6 +28,45 @@
   </div>
 </div>
 
+<!-- RANK TIERS SHOWCASE BANNER -->
+<div class="rank-showcase-grid">
+  <div class="rank-showcase-card">
+    <div class="rank-showcase-icon frame-bronze">🥉</div>
+    <div class="rank-showcase-info">
+      <h4>Đồng Kỳ Thủ</h4>
+      <div>Dưới 1,200 Elo</div>
+    </div>
+  </div>
+  <div class="rank-showcase-card">
+    <div class="rank-showcase-icon frame-silver">🥈</div>
+    <div class="rank-showcase-info">
+      <h4>Bạc Tinh Anh</h4>
+      <div>1,200 – 1,349 Elo</div>
+    </div>
+  </div>
+  <div class="rank-showcase-card">
+    <div class="rank-showcase-icon frame-gold">🥇</div>
+    <div class="rank-showcase-info">
+      <h4>Vàng Dũng Sĩ</h4>
+      <div>1,350 – 1,499 Elo</div>
+    </div>
+  </div>
+  <div class="rank-showcase-card">
+    <div class="rank-showcase-icon frame-diamond">💎</div>
+    <div class="rank-showcase-info">
+      <h4>Kim Cương Bậc Thầy</h4>
+      <div>1,500 – 1,699 Elo</div>
+    </div>
+  </div>
+  <div class="rank-showcase-card">
+    <div class="rank-showcase-icon frame-mythic">👑</div>
+    <div class="rank-showcase-info">
+      <h4>Thách Đấu Thần Thoại</h4>
+      <div>1,700+ Elo</div>
+    </div>
+  </div>
+</div>
+
 <div class="table-wrap">
   <table class="table-dark">
     <thead>
@@ -49,11 +88,23 @@
           </span>
         </td>
         <td>
-          <span style="font-size: 16px; margin-right: 6px;">{{ avatar_map.get(player.avatar, '🥷') }}</span>
-          <strong style="color: var(--text);">{{ player.username }}</strong>
-          {% if current_user and current_user.id == player.id %}
-            <span class="tag blue" style="margin-left: 6px;">Bạn</span>
-          {% endif %}
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span class="avatar-frame {{ player.rank_tier.frame_class if player.rank_tier else 'frame-bronze' }}" style="width: 34px; height: 34px; font-size: 17px; flex-shrink: 0;" title="{{ player.rank_tier.name if player.rank_tier else 'Đồng Kỳ Thủ' }}">
+              {{ avatar_map.get(player.avatar, '🥷') }}
+            </span>
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong style="color: var(--text);">{{ player.username }}</strong>
+                {% if player.rank_tier %}
+                  <span class="rank-tag {{ player.rank_tier.id }}">{{ player.rank_tier.icon }} {{ player.rank_tier.name }}</span>
+                {% endif %}
+                {% if current_user and current_user.id == player.id %}
+                  <span class="tag blue">Bạn</span>
+                {% endif %}
+              </div>
+              <div style="font-size: 11px; color: var(--muted); margin-top: 1px;">{{ player.title or 'Kỳ Thủ' }}</div>
+            </div>
+          </div>
         </td>
         <td>
           <span class="elo-badge">{{ player.elo }}</span>

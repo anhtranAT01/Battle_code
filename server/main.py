@@ -107,6 +107,8 @@ def home_page(
             "losses": u.losses,
             "draws": u.draws,
             "avatar": getattr(u, "avatar", "ninja") or "ninja",
+            "rank_tier": getattr(u, "rank_tier", None),
+            "title": getattr(u, "title", "Kỳ Thủ"),
             "has_active_bot": has_active,
         })
 

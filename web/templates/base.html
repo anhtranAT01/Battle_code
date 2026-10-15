@@ -88,22 +88,34 @@
         <div class="top-player-hud">
           {% if current_user %}
             <div class="hud-content">
-              <a href="/profile" class="hud-avatar-wrap" title="Đổi hình đại diện trong Profile">
+              <a href="/profile" class="hud-avatar-wrap avatar-frame {{ current_user.rank_tier.frame_class if current_user.rank_tier else 'frame-bronze' }}" title="Hồ sơ cá nhân - Hạng: {{ current_user.rank_tier.name if current_user.rank_tier else 'Đồng' }}">
                 <span class="hud-avatar-icon">
                   {{ avatar_map.get(current_user.avatar, '🥷') }}
                 </span>
+                {% if current_user.rank_tier %}
+                  <span class="hud-rank-icon-corner" title="{{ current_user.rank_tier.name }}">{{ current_user.rank_tier.icon }}</span>
+                {% endif %}
                 <span class="hud-online-indicator"></span>
               </a>
 
               <div class="hud-user-details">
                 <div class="hud-user-name">
                   <span>{{ current_user.username }}</span>
+                  {% if current_user.rank_tier %}
+                    <span class="rank-tag {{ current_user.rank_tier.id }}">{{ current_user.rank_tier.icon }} {{ current_user.rank_tier.name }}</span>
+                  {% endif %}
                   {% if current_user.is_admin %}
                     <span class="badge-admin">Admin</span>
                   {% endif %}
                 </div>
                 <div class="hud-user-stats">
                   <span class="hud-elo-badge">⭐ {{ current_user.elo }} Elo</span>
+                  {% if current_user.rank_tier and current_user.rank_tier.points_needed > 0 %}
+                    <span class="hud-rank-next" title="Cần thêm {{ current_user.rank_tier.points_needed }} Elo để lên {{ current_user.rank_tier.next_tier_name }}">(+{{ current_user.rank_tier.points_needed }} ➔ {{ current_user.rank_tier.next_tier_icon }})</span>
+                  {% elif current_user.rank_tier and current_user.rank_tier.points_needed == 0 %}
+                    <span class="hud-rank-next" style="color: #f472b6;">(👑 Đỉnh cao)</span>
+                  {% endif %}
+                  <span class="hud-stat-divider">|</span>
                   <span class="hud-stat-item win">{{ current_user.wins }}W</span>
                   <span class="hud-stat-divider">/</span>
                   <span class="hud-stat-item loss">{{ current_user.losses }}L</span>
@@ -241,13 +253,17 @@
         container.innerHTML = messages.map(msg => {
           const avatarIcon = AVATAR_ICONS[msg.user?.avatar] || '🥷';
           const isAdmin = msg.user?.is_admin ? '<span class="badge-admin">Admin</span>' : '';
+          const rankTier = msg.user?.rank_tier;
+          const frameClass = rankTier ? rankTier.frame_class : 'frame-bronze';
+          const rankBadge = rankTier ? `<span class="rank-tag ${rankTier.id}">${rankTier.icon} ${rankTier.name}</span>` : '';
           const elo = msg.user?.elo ? `<span class="chat-elo">${msg.user.elo}</span>` : '';
           return `
             <div class="chat-msg-row">
-              <div class="chat-msg-avatar" title="${msg.user?.username || 'Khách'}">${avatarIcon}</div>
+              <div class="chat-msg-avatar avatar-frame ${frameClass}" title="${rankTier ? rankTier.name : 'Đồng Kỳ Thủ'}">${avatarIcon}</div>
               <div class="chat-msg-body">
                 <div class="chat-msg-header">
-                  <span class="chat-msg-author">${msg.user?.username || 'Vô danh'}</span>
+                  <span class="chat-msg-author">${escapeHtml(msg.user?.username || 'Vô danh')}</span>
+                  ${rankBadge}
                   ${isAdmin}
                   ${elo}
                   <span class="chat-msg-time">${msg.created_at || ''}</span>

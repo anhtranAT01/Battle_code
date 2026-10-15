@@ -63,11 +63,13 @@ def _serialize_match(m: Match) -> Dict[str, Any]:
             "id": m.player1.id,
             "username": m.player1.username,
             "avatar": getattr(m.player1, "avatar", "ninja") or "ninja",
+            "rank_tier": getattr(m.player1, "rank_tier", None),
         } if m.player1 else None,
         "player2": {
             "id": m.player2.id,
             "username": m.player2.username,
             "avatar": getattr(m.player2, "avatar", "ninja") or "ninja",
+            "rank_tier": getattr(m.player2, "rank_tier", None),
         } if m.player2 else None,
         "bot1_id": m.bot1_id,
         "bot2_id": m.bot2_id,

@@ -19,10 +19,16 @@
   <!-- Left Side: Player 1 (Red) & Match Info -->
   <aside class="side left">
     <div class="player-card p1">
-      <h3>
-        <span id="p1Name">Người chơi 1</span>
-        <span class="tag red">Đỏ (P1)</span>
-      </h3>
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+        <span id="p1Avatar" class="avatar-frame frame-bronze" style="width: 36px; height: 36px; font-size: 18px; flex-shrink: 0;">🥷</span>
+        <div>
+          <h3 style="margin: 0; display: flex; align-items: center; gap: 6px;">
+            <span id="p1Name">Người chơi 1</span>
+            <span class="tag red">Đỏ</span>
+          </h3>
+          <div id="p1RankWrap" style="font-size: 11px; margin-top: 2px;"></div>
+        </div>
+      </div>
       <div class="target">Đích thắng: <b>i9</b> (góc phải-trên)</div>
       <div class="counts" id="p1counts"></div>
     </div>
@@ -85,11 +91,16 @@
   <!-- Right Side: Player 2 (Blue) & Move Log -->
   <aside class="side right">
     <div class="player-card p2">
-      <h3>
-        <span id="p2Avatar" style="font-size: 20px;">👤</span>
-        <span id="p2Name">Người chơi 2</span>
-        <span class="tag blue">Xanh (P2)</span>
-      </h3>
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+        <span id="p2Avatar" class="avatar-frame frame-bronze" style="width: 36px; height: 36px; font-size: 18px; flex-shrink: 0;">🤖</span>
+        <div>
+          <h3 style="margin: 0; display: flex; align-items: center; gap: 6px;">
+            <span id="p2Name">Người chơi 2</span>
+            <span class="tag blue">Xanh</span>
+          </h3>
+          <div id="p2RankWrap" style="font-size: 11px; margin-top: 2px;"></div>
+        </div>
+      </div>
       <div class="target">Đích thắng: <b>a1</b> (góc trái-dưới)</div>
       <div class="counts" id="p2counts"></div>
     </div>
@@ -185,14 +196,18 @@
 
       container.innerHTML = msgs.map(m => {
         const icon = AVATAR_ICONS[m.user?.avatar] || '🥷';
+        const rankTier = m.user?.rank_tier;
+        const frameClass = rankTier ? rankTier.frame_class : 'frame-bronze';
+        const rankBadge = rankTier ? `<span class="rank-tag ${rankTier.id}">${rankTier.icon} ${rankTier.name}</span>` : '';
         return `
           <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 6px 10px; font-size: 12px;">
-            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
-              <span>${icon}</span>
-              <strong style="color: #fff;">${m.user?.username || 'Khách'}</strong>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span class="avatar-frame ${frameClass}" style="width: 24px; height: 24px; font-size: 13px;">${icon}</span>
+              <strong style="color: #fff;">${escapeHtml(m.user?.username || 'Khách')}</strong>
+              ${rankBadge}
               <span style="font-size: 10px; color: var(--muted); margin-left: auto;">${m.created_at || ''}</span>
             </div>
-            <div style="color: #cbd5e1; word-break: break-word;">${escapeHtml(m.content)}</div>
+            <div style="color: #cbd5e1; word-break: break-word; padding-left: 32px;">${escapeHtml(m.content)}</div>
           </div>
         `;
       }).join('');
@@ -241,20 +256,32 @@
         if (m.player1) {
           document.getElementById('p1Name').textContent = m.player1.username;
           const p1Icon = AVATAR_ICONS[m.player1.avatar] || '🥷';
-          const p1Card = document.querySelector('.player-card.p1 h3');
-          if (p1Card && !document.getElementById('p1Avatar')) {
-            const span = document.createElement('span');
-            span.id = 'p1Avatar';
-            span.style.fontSize = '20px';
-            span.textContent = p1Icon + ' ';
-            p1Card.prepend(span);
+          const p1AvatarEl = document.getElementById('p1Avatar');
+          if (p1AvatarEl) {
+            p1AvatarEl.textContent = p1Icon;
+            if (m.player1.rank_tier) {
+              p1AvatarEl.className = 'avatar-frame ' + m.player1.rank_tier.frame_class;
+              const p1RankWrap = document.getElementById('p1RankWrap');
+              if (p1RankWrap) {
+                p1RankWrap.innerHTML = `<span class="rank-tag ${m.player1.rank_tier.id}">${m.player1.rank_tier.icon} ${m.player1.rank_tier.name}</span>`;
+              }
+            }
           }
         }
         if (m.player2) {
           document.getElementById('p2Name').textContent = m.player2.username;
           const p2Icon = AVATAR_ICONS[m.player2.avatar] || '🥷';
           const p2AvatarEl = document.getElementById('p2Avatar');
-          if (p2AvatarEl) p2AvatarEl.textContent = p2Icon;
+          if (p2AvatarEl) {
+            p2AvatarEl.textContent = p2Icon;
+            if (m.player2.rank_tier) {
+              p2AvatarEl.className = 'avatar-frame ' + m.player2.rank_tier.frame_class;
+              const p2RankWrap = document.getElementById('p2RankWrap');
+              if (p2RankWrap) {
+                p2RankWrap.innerHTML = `<span class="rank-tag ${m.player2.rank_tier.id}">${m.player2.rank_tier.icon} ${m.player2.rank_tier.name}</span>`;
+              }
+            }
+          }
         }
       }
     } catch (err) {

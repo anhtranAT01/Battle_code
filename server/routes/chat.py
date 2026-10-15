@@ -36,6 +36,7 @@ def _serialize_message(msg: ChatMessage) -> Dict[str, Any]:
             "avatar": getattr(msg.user, "avatar", "ninja") or "ninja",
             "is_admin": msg.user.is_admin,
             "elo": msg.user.elo,
+            "rank_tier": getattr(msg.user, "rank_tier", None),
         } if msg.user else None,
     }
 

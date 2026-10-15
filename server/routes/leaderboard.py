@@ -32,6 +32,9 @@ def get_leaderboard(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
             "wins": user.wins,
             "losses": user.losses,
             "draws": user.draws,
+            "avatar": getattr(user, "avatar", "ninja") or "ninja",
+            "rank_tier": getattr(user, "rank_tier", None),
+            "title": getattr(user, "title", "Kỳ Thủ"),
             "has_active_bot": has_active,
         })
 

@@ -77,6 +77,18 @@ class User(Base):
         """Verify candidate plaintext password against stored hash."""
         return verify_password_hash(plain, self.password_hash)
 
+    @property
+    def rank_tier(self) -> dict:
+        """Get the user's rank tier metadata and frame class."""
+        from server.ranks import get_rank_tier
+        return get_rank_tier(self.elo)
+
+    @property
+    def title(self) -> str:
+        """Get the user's prestige title."""
+        from server.ranks import get_player_title
+        return get_player_title(self.elo, self.wins)
+
 
 class Bot(Base):
     """Uploaded bot entity linked to a specific user."""
