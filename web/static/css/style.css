@@ -124,10 +124,8 @@ html, body {
   font-size: 17px;
   font-weight: 800;
   letter-spacing: 0.8px;
-  background: linear-gradient(90deg, #ffffff, #a5b4fc);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #ffffff;
+  text-shadow: 0 0 12px rgba(165, 180, 252, 0.5);
 }
 
 .brand-sub {
@@ -145,39 +143,59 @@ html, body {
 }
 
 .nav-section-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 1.2px;
-  color: rgba(154, 164, 214, 0.6);
-  padding: 14px 10px 6px;
+  color: #64748b;
+  padding: 16px 12px 6px;
   text-transform: uppercase;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 8px;
+}
+
+.sidebar-nav > .nav-section-label:first-child {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 4px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 11px 14px;
   border-radius: 10px;
-  color: var(--muted);
-  font-size: 13.5px;
+  color: #94a3b8;
+  font-size: 14px;
   font-weight: 600;
   text-decoration: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  width: 100%;
 }
 
 .nav-item:hover {
-  color: #fff;
-  background: rgba(124, 140, 255, 0.1);
+  color: #ffffff;
+  background: rgba(124, 140, 255, 0.12);
   transform: translateX(3px);
 }
 
 .nav-item.active {
-  color: #fff;
-  background: linear-gradient(90deg, rgba(124, 140, 255, 0.22) 0%, rgba(124, 140, 255, 0.08) 100%);
-  border: 1px solid rgba(124, 140, 255, 0.35);
+  color: #ffffff;
+  background: linear-gradient(90deg, rgba(124, 140, 255, 0.25) 0%, rgba(124, 140, 255, 0.08) 100%);
+  border-left: 3px solid #7c8cff;
+  border-radius: 0 10px 10px 0;
   box-shadow: 0 4px 16px rgba(124, 140, 255, 0.15);
+}
+
+.nav-item-btn {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  outline: none;
+  width: 100%;
 }
 
 .nav-icon {
@@ -434,84 +452,9 @@ html, body {
   width: 100%;
   margin: 0 auto;
   padding: 20px 28px 60px;
-}
-.navbar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 24px;
-  background: rgba(22, 27, 54, 0.85);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
-  box-shadow: var(--shadow-1);
-}
-
-.nav-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 19px;
-  font-weight: 800;
-  letter-spacing: 0.3px;
-  color: var(--text);
-}
-.nav-brand .brand-badge {
-  font-size: 11px;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #0b1024;
-  padding: 3px 8px;
-  border-radius: 999px;
-}
-
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.nav-links a {
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  transition: all 0.15s ease;
-}
-.nav-links a:hover, .nav-links a.active {
-  color: var(--text);
-  background: var(--panel-3);
-}
-
-.nav-user {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.user-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: 999px;
-  background: var(--panel-3);
-  border: 1px solid var(--line);
-  font-size: 13px;
-  font-weight: 600;
-}
-.user-badge .elo-tag {
-  color: #ffe45c;
-  font-family: ui-monospace, SFMono-Regular, monospace;
-}
-
-/* ================== MAIN APP CONTAINER ================== */
+/* ================== MAIN APP CONTAINER & PAGE HEADER ================== */
 .container {
-  max-width: 1240px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 24px 20px 48px;
 }
@@ -522,23 +465,25 @@ html, body {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--line);
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(124, 140, 255, 0.15);
 }
+
 .page-title {
   margin: 0;
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 800;
-  background: linear-gradient(90deg, #fff, #b6c1ff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #ffffff !important;
+  letter-spacing: -0.5px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
+
 .page-subtitle {
-  color: var(--muted);
+  color: #94a3b8;
   font-size: 14px;
-  margin-top: 4px;
+  margin-top: 6px;
+  line-height: 1.5;
 }
 
 /* ================== BADGES & TAGS ================== */
@@ -1525,71 +1470,50 @@ html, body {
 }
 
 /* ================== RESPONSIVE ADAPTATIONS ================== */
-@media (max-width: 992px) {
+@media (max-width: 1024px) {
   .app-sidebar {
-    width: 72px;
-    min-width: 72px;
-    padding: 16px 8px;
-  }
-  .brand-info, .nav-label, .nav-section-label, .chat-toggle-text {
-    display: none;
-  }
-  .brand-icon {
-    width: 38px;
-    height: 38px;
-    font-size: 20px;
+    width: 220px;
+    min-width: 220px;
+    max-width: 220px;
+    padding: 14px 8px;
   }
   .nav-item {
-    justify-content: center;
-    padding: 12px 0;
-  }
-  .nav-pill {
-    display: none;
-  }
-  .chat-toggle-btn {
-    justify-content: center;
-    padding: 10px 0;
+    font-size: 13px;
+    padding: 9px 10px;
   }
   .app-main-content {
-    padding: 16px 14px 48px;
+    padding: 20px 20px 60px;
   }
 }
 
 @media (max-width: 768px) {
   :root {
-    --cell: 38px;
+    --cell: 40px;
   }
+  /* Keep vertical layout structure, never break into horizontal wrap! */
   .app-layout {
-    flex-direction: column;
+    display: flex;
+    flex-direction: row;
+    min-height: 100vh;
+    overflow-x: auto;
   }
   .app-sidebar {
-    width: 100%;
-    min-width: 100%;
-    min-height: auto;
-    position: relative;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    padding: 10px 14px;
-  }
-  .sidebar-header {
-    margin-bottom: 0;
-    padding: 0;
-    border-bottom: none;
-  }
-  .sidebar-nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  .sidebar-footer {
-    display: none;
+    width: 210px;
+    min-width: 210px;
+    max-width: 210px;
   }
   .top-player-hud {
-    border-radius: 14px;
-    padding: 6px 12px;
+    padding: 6px 14px;
+    max-width: 95%;
   }
   .hud-user-stats {
     flex-wrap: wrap;
+    font-size: 11px;
+  }
+  .hud-actions {
+    padding-left: 4px;
+  }
+  .app-main-content {
+    padding: 16px 14px 60px;
   }
 }

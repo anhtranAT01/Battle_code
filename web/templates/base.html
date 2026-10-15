@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Battlecode 9x9 RPS Platform{% endblock %}</title>
-  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -24,7 +24,7 @@
   } %}
 
   <div class="app-layout">
-    <!-- LEFT VERTICAL SIDEBAR MENU -->
+    <!-- LEFT VERTICAL SIDEBAR MENU (PLAYHOP STYLE) -->
     <aside class="app-sidebar">
       <div class="sidebar-header">
         <a href="/" class="brand-link">
@@ -71,18 +71,14 @@
           <span class="nav-label">Quản Trị Admin</span>
         </a>
         {% endif %}
-      </nav>
 
-      <!-- SIDEBAR FOOTER: WORLD CHAT TOGGLE -->
-      <div class="sidebar-footer">
-        <button class="chat-toggle-btn" onclick="toggleWorldChat()" id="btnSidebarChat">
-          <span class="chat-toggle-icon">💬</span>
-          <div class="chat-toggle-text">
-            <span>Kênh Thế Giới</span>
-            <small class="live-dot-text"><span class="pulse-dot"></span>Trực tuyến</small>
-          </div>
+        <div class="nav-section-label">CỘNG ĐỒNG</div>
+        <button class="nav-item nav-item-btn" onclick="toggleWorldChat()" id="btnSidebarChat" type="button">
+          <span class="nav-icon">💬</span>
+          <span class="nav-label">Kênh Thế Giới</span>
+          <small class="live-dot-text"><span class="pulse-dot"></span>Trực tuyến</small>
         </button>
-      </div>
+      </nav>
     </aside>
 
     <!-- MAIN VIEWPORT -->
