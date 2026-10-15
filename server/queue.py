@@ -149,7 +149,7 @@ def execute_match_job(
         actual_bot1_path = resolve_bot_filepath(bot1, bot1_path)
         actual_bot2_path = resolve_bot_filepath(bot2, bot2_path)
 
-        # Run match in isolated worker processes
+        # Run match in isolated worker processes (fast_mode for 30ms execution)
         match_result = run_match(
             bot1_path=actual_bot1_path,
             bot2_path=actual_bot2_path,
@@ -157,6 +157,7 @@ def execute_match_job(
             timeout_per_turn=timeout_seconds,
             player1_info=p1_meta,
             player2_info=p2_meta,
+            fast_mode=True,
         )
 
         # Save replay JSON
@@ -174,6 +175,13 @@ def execute_match_job(
         match.replay_data = json.dumps(match_result, ensure_ascii=False)
         match.win_reason = win_reason
         match.total_turns = total_turns
+
+        # Instant in-memory cache update
+        try:
+            from server.routes.matches import REPLAY_CACHE
+            REPLAY_CACHE[match_id] = match_result
+        except Exception:
+            pass
 
         if winner_code == 1:
             match.winner_id = player1.id

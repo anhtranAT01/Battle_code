@@ -60,6 +60,7 @@ class User(Base):
     wins: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     losses: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     draws: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    avatar: Mapped[str] = mapped_column(String(64), default="ninja", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),
@@ -169,3 +170,41 @@ class BracketMatch(Base):
     player1: Mapped[Optional["User"]] = relationship("User", foreign_keys=[player1_id])
     player2: Mapped[Optional["User"]] = relationship("User", foreign_keys=[player2_id])
     winner: Mapped[Optional["User"]] = relationship("User", foreign_keys=[winner_id])
+
+
+class ChatMessage(Base):
+    """World channel or match spectator chat message."""
+
+    __tablename__ = "chat_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    match_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("matches.id"), nullable=True)
+    channel: Mapped[str] = mapped_column(String(32), default="world", nullable=False)
+    content: Mapped[str] = mapped_column(String(500), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    user: Mapped["User"] = relationship("User")
+
+
+class TournamentParticipant(Base):
+    """Registered participant in the elimination tournament."""
+
+    __tablename__ = "tournament_participants"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    bot_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("bots.id"), nullable=True)
+    seed: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    joined_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    user: Mapped["User"] = relationship("User")
+    bot: Mapped[Optional["Bot"]] = relationship("Bot")

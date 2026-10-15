@@ -64,6 +64,7 @@ def init_db(target_engine=None) -> None:
         for table, col, col_type in [
             ("bots", "source_code", "TEXT"),
             ("matches", "replay_data", "TEXT"),
+            ("users", "avatar", "VARCHAR(64) DEFAULT 'ninja'"),
         ]:
             try:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))

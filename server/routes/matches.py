@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -19,10 +19,18 @@ from server.tournament_config import load_tournament_config
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
+# In-memory replay cache for blazing-fast 0ms replay loading
+REPLAY_CACHE: Dict[int, Dict[str, Any]] = {}
+
 
 class ChallengeRequest(BaseModel):
     """Pydantic payload for initiating an FFA challenge match."""
     opponent_id: int
+
+
+class BossChallengeRequest(BaseModel):
+    """Payload for challenging Boss AI bots."""
+    difficulty: str = Field(default="hard", description="'easy', 'medium', or 'hard'")
 
 
 def _is_portal_open_now(db: Session) -> bool:
@@ -42,7 +50,7 @@ def _is_portal_open_now(db: Session) -> bool:
 
 def _serialize_match(m: Match) -> Dict[str, Any]:
     """Serialize a Match SQLAlchemy entity to a dictionary."""
-    is_done = bool(m.replay_path or getattr(m, "replay_data", None))
+    is_done = bool(m.replay_path or getattr(m, "replay_data", None) or m.id in REPLAY_CACHE)
     has_err = bool(m.win_reason and "error" in m.win_reason.lower())
     match_status = "completed" if is_done else ("error" if has_err else "running")
 
@@ -51,8 +59,16 @@ def _serialize_match(m: Match) -> Dict[str, Any]:
         "status": match_status,
         "player1_id": m.player1_id,
         "player2_id": m.player2_id,
-        "player1": {"id": m.player1.id, "username": m.player1.username} if m.player1 else None,
-        "player2": {"id": m.player2.id, "username": m.player2.username} if m.player2 else None,
+        "player1": {
+            "id": m.player1.id,
+            "username": m.player1.username,
+            "avatar": getattr(m.player1, "avatar", "ninja") or "ninja",
+        } if m.player1 else None,
+        "player2": {
+            "id": m.player2.id,
+            "username": m.player2.username,
+            "avatar": getattr(m.player2, "avatar", "ninja") or "ninja",
+        } if m.player2 else None,
         "bot1_id": m.bot1_id,
         "bot2_id": m.bot2_id,
         "winner_id": m.winner_id,
@@ -66,6 +82,7 @@ def _serialize_match(m: Match) -> Dict[str, Any]:
         "is_bracket": m.is_bracket,
         "created_at": m.created_at.isoformat() if m.created_at else None,
     }
+
 
 
 @router.post("/challenge", status_code=status.HTTP_201_CREATED)
@@ -148,6 +165,84 @@ def challenge_opponent(
     }
 
 
+@router.post("/boss", status_code=status.HTTP_201_CREATED)
+def challenge_boss(
+    payload: BossChallengeRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Challenge one of the built-in AI Bosses (Easy, Medium, Hard Alpha-Beta)."""
+    user_bot = (
+        db.query(Bot)
+        .filter(Bot.user_id == current_user.id, Bot.is_active == True)  # noqa: E712
+        .first()
+    )
+    if not user_bot:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bạn chưa có bot nào đang hoạt động. Hãy tải lên hoặc kích hoạt bot trước khi đấu Boss!",
+        )
+
+    diff = payload.difficulty.lower().strip()
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    if diff == "easy":
+        boss_name = "🤖 Tập sự AI (Novice)"
+        boss_file = repo_root / "starter_kit" / "bot_template.py"
+        boss_avatar = "mecha"
+        boss_elo = 1000
+    elif diff == "medium":
+        boss_name = "🦊 Bậc thầy Heuristic"
+        boss_file = repo_root / "starter_kit" / "heuristic_bot.py"
+        boss_avatar = "kitsune"
+        boss_elo = 1400
+    else:  # hard
+        boss_name = "🐉 Trùm Cuối Alpha-Beta (Nightmare)"
+        boss_file = repo_root / "starter_kit" / "boss_ai.py"
+        boss_avatar = "dragon"
+        boss_elo = 1800
+
+    boss_user = db.query(User).filter(User.username == boss_name).first()
+    if not boss_user:
+        boss_user = User(
+            username=boss_name,
+            password_hash="boss_nopassword",
+            is_admin=False,
+            elo=boss_elo,
+            avatar=boss_avatar,
+        )
+        db.add(boss_user)
+        db.commit()
+        db.refresh(boss_user)
+
+    match = Match(
+        player1_id=current_user.id,
+        player2_id=boss_user.id,
+        bot1_id=user_bot.id,
+        bot2_id=None,
+        p1_elo_before=current_user.elo,
+        p2_elo_before=boss_user.elo,
+        is_bracket=False,
+    )
+    db.add(match)
+    db.commit()
+    db.refresh(match)
+
+    background_tasks.add_task(
+        execute_match_job,
+        match.id,
+        user_bot.filepath,
+        str(boss_file.resolve()),
+    )
+
+    return {
+        "match_id": match.id,
+        "status": "queued",
+        "boss_name": boss_name,
+        "difficulty": diff,
+    }
+
+
 @router.get("", response_model=List[Dict[str, Any]])
 def list_matches(
     user_id: Optional[int] = Query(None, description="Filter by participant user ID"),
@@ -192,15 +287,30 @@ def get_match_replay(
             detail="Match not found.",
         )
 
+    # If match is still pending or executing, ensure it is not served from stale cache
+    if match.winner_id is None and not match.win_reason and match.total_turns == 0 and not match.replay_path and not getattr(match, "replay_data", None):
+        REPLAY_CACHE.pop(match_id, None)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Replay is not yet available or match is still running.",
+        )
+
+    # 0. Check in-memory instant cache (0ms)
+    if match_id in REPLAY_CACHE:
+        return REPLAY_CACHE[match_id]
+
     # 1. Check replay_data stored directly in database
     if getattr(match, "replay_data", None):
         try:
-            return json.loads(match.replay_data)
+            parsed = json.loads(match.replay_data)
+            REPLAY_CACHE[match_id] = parsed
+            return parsed
         except Exception:
             pass
 
     # 2. Check replay file on disk with resilient multi-path discovery
     candidates: List[Optional[Path]] = []
+
     if match.replay_path:
         candidates.append(Path(match.replay_path))
         candidates.append(Path(match.replay_path).resolve())

@@ -19,8 +19,8 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from server.database import get_db, init_db
-from server.models import Bot, BracketMatch, Match, User
-from server.routes import admin, auth, bots, leaderboard, matches
+from server.models import Bot, BracketMatch, Match, TournamentParticipant, User
+from server.routes import admin, auth, bots, chat, leaderboard, matches
 from server.routes.admin import _get_all_settings_dict
 from server.routes.auth import ACTIVE_SESSIONS, get_token_from_request
 from server.routes.matches import _is_portal_open_now
@@ -67,6 +67,7 @@ app.include_router(bots.router, prefix="/api")
 app.include_router(matches.router, prefix="/api")
 app.include_router(leaderboard.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
 
 
 def _get_optional_user(request: Request, db: Session) -> User | None:
@@ -105,6 +106,7 @@ def home_page(
             "wins": u.wins,
             "losses": u.losses,
             "draws": u.draws,
+            "avatar": getattr(u, "avatar", "ninja") or "ninja",
             "has_active_bot": has_active,
         })
 
@@ -160,6 +162,34 @@ def register_page(
     )
 
 
+@app.get("/boss", response_class=HTMLResponse, tags=["web"])
+def boss_page(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    """Render the Boss Challenge Arena with multiple AI difficulties."""
+    current_user = _get_optional_user(request, db)
+    return templates.TemplateResponse(
+        request=request,
+        name="boss.html",
+        context={"current_user": current_user},
+    )
+
+
+@app.get("/rules", response_class=HTMLResponse, tags=["web"])
+def rules_page(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    """Render the 9x9 RPS Chess gameplay rules and strategic guide."""
+    current_user = _get_optional_user(request, db)
+    return templates.TemplateResponse(
+        request=request,
+        name="rules.html",
+        context={"current_user": current_user},
+    )
+
+
 @app.get("/profile", response_class=HTMLResponse, tags=["web"])
 def profile_page(
     request: Request,
@@ -169,6 +199,17 @@ def profile_page(
     current_user = _get_optional_user(request, db)
     user_bots: List[Bot] = []
     user_matches: List[Match] = []
+
+    avatar_list = [
+        {"id": "ninja", "name": "Ninja Bóng Đêm", "icon": "🥷", "desc": "Nhanh nhẹn, thoắt ẩn thoắt hiện"},
+        {"id": "mecha", "name": "Chiến Binh Mecha", "icon": "🤖", "desc": "Tính toán máy tính chuẩn xác tuyệt đối"},
+        {"id": "knight", "name": "Hiệp Sĩ Thánh", "icon": "⚔️", "desc": "Kiên cường, phòng thủ vững chắc"},
+        {"id": "mage", "name": "Phù Thủy Tối Cao", "icon": "🧙", "desc": "Ảo thuật cờ, biến hóa khôn lường"},
+        {"id": "dragon", "name": "Thần Long Vương", "icon": "🐉", "desc": "Sức mạnh áp đảo, hủy diệt đối phương"},
+        {"id": "kitsune", "name": "Hồ Ly Tinh Linh", "icon": "🦊", "desc": "Mưu mẹo, giăng bẫy bắt cờ bất ngờ"},
+        {"id": "valkyrie", "name": "Nữ Thần Chiến Binh", "icon": "⚡", "desc": "Tốc độ thần sấm, xung phong tiền tuyến"},
+        {"id": "emperor", "name": "Hoàng Đế Tối Thượng", "icon": "👑", "desc": "Chúa tể đấu trường, uy quyền thống soái"},
+    ]
 
     if current_user:
         user_bots = (
@@ -192,6 +233,7 @@ def profile_page(
             "current_user": current_user,
             "user_bots": user_bots,
             "user_matches": user_matches,
+            "avatars": avatar_list,
         },
     )
 
@@ -251,12 +293,22 @@ def bracket_page(
         .order_by(BracketMatch.id.asc())
         .all()
     )
+    participants = (
+        db.query(TournamentParticipant)
+        .order_by(TournamentParticipant.joined_at.asc())
+        .all()
+    )
+    is_joined = False
+    if current_user:
+        is_joined = any(p.user_id == current_user.id for p in participants)
 
     return templates.TemplateResponse(
         request=request,
         name="bracket.html",
         context={
             "bracket_matches": bracket_matches,
+            "participants": participants,
+            "is_joined": is_joined,
             "current_user": current_user,
         },
     )

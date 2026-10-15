@@ -31,6 +31,28 @@
 </div>
 {% else %}
 
+<!-- CHARACTER AVATAR PICKER -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <h2 class="card-title">🎭 Chọn Nhân Vật & Hình Đại Diện (Character Avatar)</h2>
+  </div>
+  <p style="font-size: 13px; color: var(--muted); margin-bottom: 16px;">
+    Chọn nhân vật đại diện cho bạn trên Bảng xếp hạng, Đấu trường trực quan và Kênh thế giới:
+  </p>
+  <div class="avatar-grid">
+    {% for av in avatars %}
+    <div class="avatar-card {% if current_user.avatar == av.id %}active{% endif %}" onclick="selectAvatar('{{ av.id }}')" id="avatar-card-{{ av.id }}">
+      {% if current_user.avatar == av.id %}
+        <span class="avatar-badge-active">Đang dùng</span>
+      {% endif %}
+      <div class="avatar-icon-large">{{ av.icon }}</div>
+      <div class="avatar-name">{{ av.name }}</div>
+      <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">{{ av.desc }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
   <!-- Bot Upload Box -->
   <div class="card">
@@ -270,6 +292,24 @@
       }
     } catch (err) {
       alert(`Lỗi: ${err.message}`);
+    }
+  }
+
+  async function selectAvatar(avatarId) {
+    try {
+      const res = await fetch('/api/auth/avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar: avatarId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert(data.detail || 'Không thể đổi hình đại diện.');
+      }
+    } catch (err) {
+      console.error('Avatar selection error:', err);
     }
   }
 </script>

@@ -193,3 +193,41 @@ def test_explorer_page_returns_200(client: TestClient) -> None:
     assert "users" in text.lower() or "người chơi" in text.lower()
     assert "bots" in text.lower()
 
+
+def test_boss_and_rules_pages_render(client: TestClient) -> None:
+    """Verify that /boss and /rules pages render successfully."""
+    res_boss = client.get("/boss")
+    assert res_boss.status_code == 200
+    assert "Boss" in res_boss.text or "Alpha-Beta" in res_boss.text
+
+    res_rules = client.get("/rules")
+    assert res_rules.status_code == 200
+    assert "Luật" in res_rules.text or "Rules" in res_rules.text
+
+
+def test_chat_and_avatar_apis(client: TestClient) -> None:
+    """Verify world chat messaging and avatar update APIs."""
+    # 1. Register a user
+    client.post("/api/auth/register", json={"username": "chatty_ninja", "password": "pass123456"})
+    login_res = client.post("/api/auth/login", json={"username": "chatty_ninja", "password": "pass123456"})
+    token = login_res.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 2. Update avatar
+    av_res = client.post("/api/auth/avatar", json={"avatar": "dragon"}, headers=headers)
+    assert av_res.status_code == 200
+    assert av_res.json()["avatar"] == "dragon"
+
+    # 3. Send world chat message
+    send_res = client.post("/api/chat/send", json={"content": "Xin chào toàn thể kỳ thủ!", "channel": "world"}, headers=headers)
+    assert send_res.status_code == 201
+    assert send_res.json()["content"] == "Xin chào toàn thể kỳ thủ!"
+
+    # 4. Get world chat messages
+    get_res = client.get("/api/chat/messages?channel=world")
+    assert get_res.status_code == 200
+    messages = get_res.json()
+    assert len(messages) >= 1
+    assert any("Xin chào" in m["content"] for m in messages)
+
+

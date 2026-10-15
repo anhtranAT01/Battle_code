@@ -1,46 +1,196 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Battlecode 9x9 RPS Platform{% endblock %}</title>
   <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   {% block extra_head %}{% endblock %}
 </head>
-<body>
-  <nav class="navbar">
-    <a href="/" class="nav-brand">
-      <span>⚔️ Battlecode 9x9</span>
-      <span class="brand-badge">RPS Chess</span>
-    </a>
+<body class="app-body">
 
-    <ul class="nav-links">
-      <li><a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Leaderboard</a></li>
-      <li><a href="/explorer" class="{% if request.url.path == '/explorer' %}active{% endif %}">📊 Dữ liệu (Data)</a></li>
-      <li><a href="/bracket" class="{% if request.url.path == '/bracket' %}active{% endif %}">Bracket</a></li>
-      <li><a href="/profile" class="{% if request.url.path == '/profile' %}active{% endif %}">Profile</a></li>
-      <li><a href="/admin" class="{% if request.url.path == '/admin' %}active{% endif %}">Admin</a></li>
-    </ul>
+  {% set avatar_map = {
+    'ninja': '🥷',
+    'mecha': '🤖',
+    'knight': '⚔️',
+    'mage': '🧙',
+    'dragon': '🐉',
+    'kitsune': '🦊',
+    'valkyrie': '⚡',
+    'emperor': '👑'
+  } %}
 
-    <div class="nav-user">
-      {% if current_user %}
-        <div class="user-badge">
-          <span>👤 {{ current_user.username }}</span>
-          <span class="elo-tag">⭐ {{ current_user.elo }}</span>
+  <div class="app-layout">
+    <!-- LEFT VERTICAL SIDEBAR MENU -->
+    <aside class="app-sidebar">
+      <div class="sidebar-header">
+        <a href="/" class="brand-link">
+          <div class="brand-icon">⚔️</div>
+          <div class="brand-info">
+            <span class="brand-title">BATTLECODE</span>
+            <span class="brand-sub">9×9 RPS CHESS</span>
+          </div>
+        </a>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">ĐẤU TRƯỜNG & CHIẾN ĐẤU</div>
+        <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}">
+          <span class="nav-icon">🏆</span>
+          <span class="nav-label">Bảng Xếp Hạng</span>
+        </a>
+        <a href="/boss" class="nav-item {% if request.url.path == '/boss' %}active{% endif %}">
+          <span class="nav-icon">🤖</span>
+          <span class="nav-label">Đấu Boss AI</span>
+          <span class="nav-pill fire">Hot</span>
+        </a>
+        <a href="/bracket" class="nav-item {% if request.url.path == '/bracket' %}active{% endif %}">
+          <span class="nav-icon">⚔️</span>
+          <span class="nav-label">Giải Đấu & Nhánh</span>
+        </a>
+        <a href="/rules" class="nav-item {% if request.url.path == '/rules' %}active{% endif %}">
+          <span class="nav-icon">📖</span>
+          <span class="nav-label">Luật & Chiến Thuật</span>
+        </a>
+
+        <div class="nav-section-label">DỮ LIỆU & TÀI KHOẢN</div>
+        <a href="/explorer" class="nav-item {% if request.url.path == '/explorer' %}active{% endif %}">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Cơ Sở Dữ Liệu</span>
+        </a>
+        <a href="/profile" class="nav-item {% if request.url.path == '/profile' %}active{% endif %}">
+          <span class="nav-icon">👤</span>
+          <span class="nav-label">Hồ Sơ & Nhân Vật</span>
+        </a>
+        {% if current_user and current_user.is_admin %}
+        <a href="/admin" class="nav-item {% if request.url.path == '/admin' %}active{% endif %}">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-label">Quản Trị Admin</span>
+        </a>
+        {% endif %}
+      </nav>
+
+      <!-- SIDEBAR FOOTER: WORLD CHAT TOGGLE -->
+      <div class="sidebar-footer">
+        <button class="chat-toggle-btn" onclick="toggleWorldChat()" id="btnSidebarChat">
+          <span class="chat-toggle-icon">💬</span>
+          <div class="chat-toggle-text">
+            <span>Kênh Thế Giới</span>
+            <small class="live-dot-text"><span class="pulse-dot"></span>Trực tuyến</small>
+          </div>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN VIEWPORT -->
+    <div class="app-viewport">
+      <!-- TOP CENTER PLAYER HUD -->
+      <header class="app-top-header">
+        <div class="top-player-hud">
+          {% if current_user %}
+            <div class="hud-content">
+              <a href="/profile" class="hud-avatar-wrap" title="Đổi hình đại diện trong Profile">
+                <span class="hud-avatar-icon">
+                  {{ avatar_map.get(current_user.avatar, '🥷') }}
+                </span>
+                <span class="hud-online-indicator"></span>
+              </a>
+
+              <div class="hud-user-details">
+                <div class="hud-user-name">
+                  <span>{{ current_user.username }}</span>
+                  {% if current_user.is_admin %}
+                    <span class="badge-admin">Admin</span>
+                  {% endif %}
+                </div>
+                <div class="hud-user-stats">
+                  <span class="hud-elo-badge">⭐ {{ current_user.elo }} Elo</span>
+                  <span class="hud-stat-item win">{{ current_user.wins }}W</span>
+                  <span class="hud-stat-divider">/</span>
+                  <span class="hud-stat-item loss">{{ current_user.losses }}L</span>
+                  <span class="hud-stat-divider">/</span>
+                  <span class="hud-stat-item draw">{{ current_user.draws }}D</span>
+                </div>
+              </div>
+
+              <div class="hud-actions">
+                <a href="/profile" class="btn btn-sm btn-ghost" title="Quản lý Bot">📤 Nộp Bot</a>
+                <button class="btn btn-sm btn-logout" onclick="logout()" title="Đăng xuất">Đăng xuất</button>
+              </div>
+            </div>
+          {% else %}
+            <div class="hud-guest">
+              <div class="hud-guest-text">
+                <span class="hud-guest-icon">⚔️</span>
+                <span>Chào mừng đến với Đấu Trường Battlecode 9×9!</span>
+              </div>
+              <div class="hud-guest-buttons">
+                <a href="/login" class="btn btn-sm">Đăng nhập</a>
+                <a href="/register" class="btn btn-sm btn-primary">Đăng ký tham gia</a>
+              </div>
+            </div>
+          {% endif %}
         </div>
-        <button class="btn btn-sm" onclick="logout()">Logout</button>
+      </header>
+
+      <!-- PAGE CONTENT -->
+      <main class="app-main-content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <!-- FLOATING WORLD CHAT DRAWER -->
+  <div class="world-chat-drawer" id="worldChatDrawer">
+    <div class="chat-header">
+      <div class="chat-header-title">
+        <span class="chat-header-icon">🌐</span>
+        <div>
+          <strong>Kênh Thế Giới (World Chat)</strong>
+          <div class="chat-sub">Trò chuyện trực tiếp cùng các kỳ thủ toàn cầu</div>
+        </div>
+      </div>
+      <button class="chat-close-btn" onclick="toggleWorldChat()">✕</button>
+    </div>
+
+    <div class="chat-messages" id="worldChatMessages">
+      <div class="chat-loading">Đang tải tin nhắn thế giới...</div>
+    </div>
+
+    <div class="chat-footer">
+      {% if current_user %}
+        <form id="worldChatForm" onsubmit="handleSendWorldChat(event)" class="chat-input-form">
+          <input type="text" id="worldChatInput" class="chat-input" placeholder="Nhập tin nhắn thế giới... (Enter để gửi)" maxlength="400" autocomplete="off">
+          <button type="submit" class="btn btn-primary btn-sm chat-send-btn">Gửi</button>
+        </form>
       {% else %}
-        <a href="/login" class="btn btn-sm">Login</a>
-        <a href="/register" class="btn btn-primary btn-sm">Register</a>
+        <div class="chat-guest-prompt">
+          <a href="/login" style="color: var(--accent); font-weight: 600;">Đăng nhập</a> để tham gia thảo luận cùng các kỳ thủ.
+        </div>
       {% endif %}
     </div>
-  </nav>
+  </div>
 
-  <main class="container">
-    {% block content %}{% endblock %}
-  </main>
+  <!-- FLOATING QUICK CHAT BUTTON (FOR MOBILE / MINIMIZED) -->
+  <button class="floating-chat-bubble" onclick="toggleWorldChat()" id="floatingChatBubble" title="Mở Kênh Thế Giới">
+    💬
+  </button>
 
   <script>
+    const AVATAR_ICONS = {
+      ninja: '🥷',
+      mecha: '🤖',
+      knight: '⚔️',
+      mage: '🧙',
+      dragon: '🐉',
+      kitsune: '🦊',
+      valkyrie: '⚡',
+      emperor: '👑'
+    };
+
     async function logout() {
       try {
         await fetch('/api/auth/logout', { method: 'POST' });
@@ -48,6 +198,111 @@
       } catch (err) {
         console.error('Logout error:', err);
       }
+    }
+
+    // World Chat Logic
+    let worldChatOpen = false;
+    let worldChatInterval = null;
+
+    function toggleWorldChat() {
+      const drawer = document.getElementById('worldChatDrawer');
+      worldChatOpen = !worldChatOpen;
+      if (worldChatOpen) {
+        drawer.classList.add('open');
+        loadWorldMessages();
+        if (!worldChatInterval) {
+          worldChatInterval = setInterval(loadWorldMessages, 3000);
+        }
+        setTimeout(() => {
+          const input = document.getElementById('worldChatInput');
+          if (input) input.focus();
+        }, 150);
+      } else {
+        drawer.classList.remove('open');
+        if (worldChatInterval) {
+          clearInterval(worldChatInterval);
+          worldChatInterval = null;
+        }
+      }
+    }
+
+    async function loadWorldMessages() {
+      const container = document.getElementById('worldChatMessages');
+      if (!container) return;
+
+      try {
+        const res = await fetch('/api/chat/messages?channel=world&limit=40');
+        if (!res.ok) return;
+        const messages = await res.json();
+
+        if (messages.length === 0) {
+          container.innerHTML = '<div class="chat-empty">Chưa có tin nhắn nào. Hãy gửi lời chào đầu tiên!</div>';
+          return;
+        }
+
+        const isScrolledNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+
+        container.innerHTML = messages.map(msg => {
+          const avatarIcon = AVATAR_ICONS[msg.user?.avatar] || '🥷';
+          const isAdmin = msg.user?.is_admin ? '<span class="badge-admin">Admin</span>' : '';
+          const elo = msg.user?.elo ? `<span class="chat-elo">${msg.user.elo}</span>` : '';
+          return `
+            <div class="chat-msg-row">
+              <div class="chat-msg-avatar" title="${msg.user?.username || 'Khách'}">${avatarIcon}</div>
+              <div class="chat-msg-body">
+                <div class="chat-msg-header">
+                  <span class="chat-msg-author">${msg.user?.username || 'Vô danh'}</span>
+                  ${isAdmin}
+                  ${elo}
+                  <span class="chat-msg-time">${msg.created_at || ''}</span>
+                </div>
+                <div class="chat-msg-text">${escapeHtml(msg.content)}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        if (isScrolledNearBottom) {
+          container.scrollTop = container.scrollHeight;
+        }
+      } catch (err) {
+        console.error('Error fetching world chat:', err);
+      }
+    }
+
+    async function handleSendWorldChat(e) {
+      e.preventDefault();
+      const input = document.getElementById('worldChatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      try {
+        const res = await fetch('/api/chat/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: text,
+            channel: 'world'
+          })
+        });
+        if (res.ok) {
+          await loadWorldMessages();
+          const container = document.getElementById('worldChatMessages');
+          if (container) container.scrollTop = container.scrollHeight;
+        } else {
+          const err = await res.json();
+          alert(err.detail || 'Không thể gửi tin nhắn.');
+        }
+      } catch (err) {
+        console.error('Failed to send world message:', err);
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
   </script>
   {% block scripts %}{% endblock %}

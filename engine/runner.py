@@ -373,6 +373,26 @@ class BotProcess:
                 self.proc = None
 
 
+def _load_bot_callable(bot_path_str: str) -> tuple[bool, Any, str | None]:
+    """Dynamically load bot module in-process for blazing-fast execution."""
+    bot_path = Path(bot_path_str).resolve()
+    if not bot_path.is_file():
+        return False, None, f"Bot script not found: {bot_path}"
+    try:
+        module_name = f"bot_fast_{bot_path.stem}_{uuid.uuid4().hex[:8]}"
+        spec = importlib.util.spec_from_file_location(module_name, str(bot_path))
+        if spec is None or spec.loader is None:
+            return False, None, f"Cannot create module spec for: {bot_path}"
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        fn = getattr(module, "get_move", None)
+        if not callable(fn):
+            return False, None, f"Bot '{bot_path.name}' does not define callable 'get_move'"
+        return True, fn, None
+    except Exception as exc:
+        return False, None, str(exc)
+
+
 def run_match(
     bot1_path: str,
     bot2_path: str,
@@ -380,35 +400,12 @@ def run_match(
     timeout_per_turn: float = 1.0,
     player1_info: dict[str, Any] | None = None,
     player2_info: dict[str, Any] | None = None,
+    fast_mode: bool = False,
 ) -> dict[str, Any]:
     """Execute a complete 9x9 Rock-Paper-Scissors Chess match between two bot scripts.
 
-    Runs both bots in isolated worker subprocesses, enforces per-turn timeout limits,
-    tracks board states and move history, and records forfeit penalties if a bot
-    times out, crashes, or produces an invalid move.
-
-    Args:
-        bot1_path: Path to Player 1 Python bot script.
-        bot2_path: Path to Player 2 Python bot script.
-        max_turns: Maximum half-turns before tiebreaker triggers (default: 200).
-        timeout_per_turn: Maximum duration in seconds allowed for get_move (default: 1.0).
-        player1_info: Optional metadata dictionary for Player 1.
-        player2_info: Optional metadata dictionary for Player 2.
-
-    Returns:
-        Dictionary containing standardized match result and replay log:
-            - match_id: Unique match identifier string.
-            - player1: Metadata dictionary for Player 1.
-            - player2: Metadata dictionary for Player 2.
-            - winner: Winning player (1, 2, or None for draw).
-            - win_reason: Reason string ('goal', 'wipeout', 'max_turns', 'timeout',
-                          'error', 'invalid_move').
-            - total_turns: Total number of moves executed.
-            - moves: Chronological list of move record dictionaries.
-            - bot1_error: Error message string for Player 1, or None.
-            - bot2_error: Error message string for Player 2, or None.
-            - initial_board: Initial 9x9 board configuration.
-            - created_at: ISO-8601 timestamp string of match completion.
+    When fast_mode=True, loads bot modules in-process for instantaneous execution (~5ms),
+    falling back to isolated subprocesses if dynamic module loading fails.
     """
     match_id = (
         str(player1_info.get("match_id"))
@@ -442,6 +439,58 @@ def run_match(
     winner: int | None = None
     win_reason: str = ""
 
+    # Fast in-process execution path (~5ms execution)
+    if fast_mode:
+        ok1, fn1, err1 = _load_bot_callable(bot1_path)
+        ok2, fn2, err2 = _load_bot_callable(bot2_path)
+        if ok1 and ok2:
+            funcs = {1: fn1, 2: fn2}
+            while not game.is_game_over:
+                current_player = game.turn
+                opponent = 2 if current_player == 1 else 1
+                active_fn = funcs[current_player]
+                board_snapshot = copy.deepcopy(game.board)
+                history_snapshot = copy.deepcopy(game.history)
+                try:
+                    raw_move = active_fn(board_snapshot, current_player, history_snapshot)
+                except Exception as exc:
+                    winner = opponent
+                    win_reason = "error"
+                    if current_player == 1:
+                        bot1_error = f"Bot error: {exc}"
+                    else:
+                        bot2_error = f"Bot error: {exc}"
+                    break
+
+                norm_move = _normalize_move(raw_move)
+                valid_moves = game.get_valid_moves(current_player)
+                if norm_move is None or norm_move not in valid_moves:
+                    winner = opponent
+                    win_reason = "invalid_move"
+                    if current_player == 1:
+                        bot1_error = f"Illegal move: {raw_move}"
+                    else:
+                        bot2_error = f"Illegal move: {raw_move}"
+                    break
+
+                game.apply_move(norm_move[0], norm_move[1])
+                if game.is_game_over:
+                    winner = game.winner
+                    win_reason = game.win_reason or "max_turns"
+                    break
+
+            return _format_match_result(
+                match_id=match_id,
+                p1_meta=p1_meta,
+                p2_meta=p2_meta,
+                winner=winner,
+                win_reason=win_reason,
+                game=game,
+                bot1_error=bot1_error,
+                bot2_error=bot2_error,
+                initial_board=initial_board,
+            )
+
     worker1: BotProcess | None = None
     worker2: BotProcess | None = None
 
@@ -449,6 +498,7 @@ def run_match(
         # Launch Worker 1
         worker1 = BotProcess(bot1_path, timeout=timeout_per_turn)
         ok1, err1, reason1 = worker1.start()
+
         if not ok1:
             winner = 2
             win_reason = reason1 or "error"

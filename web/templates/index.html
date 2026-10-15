@@ -49,6 +49,7 @@
           </span>
         </td>
         <td>
+          <span style="font-size: 16px; margin-right: 6px;">{{ avatar_map.get(player.avatar, '🥷') }}</span>
           <strong style="color: var(--text);">{{ player.username }}</strong>
           {% if current_user and current_user.id == player.id %}
             <span class="tag blue" style="margin-left: 6px;">Bạn</span>
@@ -121,8 +122,14 @@
       {% for m in recent_matches %}
       <tr>
         <td><b>#{{ m.id }}</b></td>
-        <td><strong style="color: var(--p1);">{{ m.player1.username if m.player1 else 'P1' }}</strong></td>
-        <td><strong style="color: var(--p2);">{{ m.player2.username if m.player2 else 'P2' }}</strong></td>
+        <td>
+          <span style="font-size: 14px; margin-right: 4px;">{{ avatar_map.get(m.player1.avatar, '🥷') if m.player1 else '' }}</span>
+          <strong style="color: var(--p1);">{{ m.player1.username if m.player1 else 'P1' }}</strong>
+        </td>
+        <td>
+          <span style="font-size: 14px; margin-right: 4px;">{{ avatar_map.get(m.player2.avatar, '🥷') if m.player2 else '' }}</span>
+          <strong style="color: var(--p2);">{{ m.player2.username if m.player2 else 'P2' }}</strong>
+        </td>
         <td>
           {% if m.winner_id == m.player1_id %}
             <span class="tag red">Đỏ thắng ({{ m.win_reason or 'win' }})</span>

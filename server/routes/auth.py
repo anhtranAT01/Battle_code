@@ -156,6 +156,7 @@ async def login(
         "user": {
             "id": user.id,
             "username": user.username,
+            "avatar": getattr(user, "avatar", "ninja") or "ninja",
             "elo": user.elo,
             "is_admin": user.is_admin,
         },
@@ -184,9 +185,36 @@ def get_me(
     return {
         "id": current_user.id,
         "username": current_user.username,
+        "avatar": getattr(current_user, "avatar", "ninja") or "ninja",
         "elo": current_user.elo,
         "is_admin": current_user.is_admin,
         "wins": current_user.wins,
         "losses": current_user.losses,
         "draws": current_user.draws,
     }
+
+
+class UpdateAvatarRequest(BaseModel):
+    """Payload for changing player character avatar."""
+    avatar: str = Field(..., max_length=64)
+
+
+ALLOWED_AVATARS = ["ninja", "mecha", "knight", "mage", "dragon", "kitsune", "valkyrie", "emperor"]
+
+
+@router.post("/avatar")
+def update_avatar(
+    payload: UpdateAvatarRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Change user character avatar icon."""
+    target_avatar = payload.avatar.strip().lower()
+    if target_avatar not in ALLOWED_AVATARS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid avatar. Must be one of: {', '.join(ALLOWED_AVATARS)}",
+        )
+    current_user.avatar = target_avatar
+    db.commit()
+    return {"status": "ok", "avatar": current_user.avatar}

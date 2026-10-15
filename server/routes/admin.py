@@ -8,8 +8,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from server.database import get_db
-from server.models import Bot, BracketMatch, TournamentSetting, User
-from server.routes.auth import get_current_admin
+from server.models import Bot, BracketMatch, Match, TournamentParticipant, TournamentSetting, User
+from server.queue import execute_match_job
+from server.routes.auth import get_current_admin, get_current_user
 from server.tournament import generate_bracket
 from server.tournament_config import load_tournament_config
 
@@ -237,3 +238,113 @@ def get_bracket(
         }
         for bm in matches
     ]
+
+
+@router.get("/tournament/participants")
+def list_tournament_participants(
+    db: Session = Depends(get_db),
+) -> List[Dict[str, Any]]:
+    """List all users registered for the upcoming tournament bracket."""
+    parts = (
+        db.query(TournamentParticipant)
+        .order_by(TournamentParticipant.joined_at.asc())
+        .all()
+    )
+    return [
+        {
+            "id": p.id,
+            "user_id": p.user_id,
+            "username": p.user.username if p.user else "Unknown",
+            "avatar": getattr(p.user, "avatar", "ninja") if p.user else "ninja",
+            "elo": p.user.elo if p.user else 1200,
+            "bot_filename": p.bot.filename if p.bot else "None",
+            "joined_at": p.joined_at.strftime("%Y-%m-%d %H:%M") if p.joined_at else "",
+        }
+        for p in parts
+    ]
+
+
+@router.post("/tournament/join")
+def join_tournament(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Register the current user and their active bot for the tournament."""
+    # Ensure active bot exists
+    bot = db.query(Bot).filter(Bot.user_id == current_user.id, Bot.is_active == True).first()  # noqa: E712
+    if not bot:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bạn cần nộp và kích hoạt một bot trước khi tham gia giải đấu!",
+        )
+
+    existing = db.query(TournamentParticipant).filter(TournamentParticipant.user_id == current_user.id).first()
+    if existing:
+        existing.bot_id = bot.id
+        db.commit()
+        return {"status": "updated", "message": "Đã cập nhật thông tin bot tham gia giải đấu!"}
+
+    part = TournamentParticipant(
+        user_id=current_user.id,
+        bot_id=bot.id,
+    )
+    db.add(part)
+    db.commit()
+    return {"status": "joined", "message": "Đăng ký tham gia giải đấu thành công!"}
+
+
+@router.post("/tournament/auto-run")
+def auto_run_bracket_matches(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Execute all ready pending bracket matches and advance winners."""
+    pending_matches = (
+        db.query(BracketMatch)
+        .filter(BracketMatch.status == "pending")
+        .all()
+    )
+    executed_count = 0
+
+    for bm in pending_matches:
+        if not bm.player1_id or not bm.player2_id:
+            continue
+
+        b1 = db.query(Bot).filter(Bot.user_id == bm.player1_id, Bot.is_active == True).first()  # noqa: E712
+        b2 = db.query(Bot).filter(Bot.user_id == bm.player2_id, Bot.is_active == True).first()  # noqa: E712
+        if not b1 or not b2:
+            continue
+
+        # Create Match record
+        m = Match(
+            player1_id=bm.player1_id,
+            player2_id=bm.player2_id,
+            bot1_id=b1.id,
+            bot2_id=b2.id,
+            is_bracket=True,
+        )
+        db.add(m)
+        db.commit()
+        db.refresh(m)
+
+        res = execute_match_job(m.id, b1.filepath, b2.filepath, db_factory=lambda: db)
+        if res:
+            winner_code = res.get("winner")
+            if winner_code == 1:
+                bm.winner_id = bm.player1_id
+                bm.score_p1 = 1
+                bm.score_p2 = 0
+            elif winner_code == 2:
+                bm.winner_id = bm.player2_id
+                bm.score_p1 = 0
+                bm.score_p2 = 1
+            else:
+                bm.winner_id = bm.player1_id  # tiebreaker to p1
+                bm.score_p1 = 1
+                bm.score_p2 = 0
+
+            bm.status = "completed"
+            db.commit()
+            executed_count += 1
+
+    return {"status": "ok", "executed_matches": executed_count}

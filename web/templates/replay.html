@@ -86,6 +86,7 @@
   <aside class="side right">
     <div class="player-card p2">
       <h3>
+        <span id="p2Avatar" style="font-size: 20px;">👤</span>
         <span id="p2Name">Người chơi 2</span>
         <span class="tag blue">Xanh (P2)</span>
       </h3>
@@ -93,9 +94,39 @@
       <div class="counts" id="p2counts"></div>
     </div>
 
-    <div class="log-panel">
-      <h3>Nhật ký nước đi (SAN)</h3>
-      <ol class="log-list" id="logList"></ol>
+    <div class="log-panel" style="display: flex; flex-direction: column; min-height: 440px;">
+      <!-- Tab Header -->
+      <div style="display: flex; border-bottom: 1px solid var(--line); margin-bottom: 8px;">
+        <button id="tabBtnLog" class="btn btn-sm active" onclick="switchRightTab('log')" style="flex: 1; border-radius: 0; background: transparent; border: none; border-bottom: 2px solid var(--accent); color: #fff; font-weight: 700; font-size: 12px; padding: 8px;">
+          📜 Nước Đi (SAN)
+        </button>
+        <button id="tabBtnChat" class="btn btn-sm" onclick="switchRightTab('chat')" style="flex: 1; border-radius: 0; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-weight: 600; font-size: 12px; padding: 8px;">
+          💬 Chat Trận Đấu
+        </button>
+      </div>
+
+      <!-- Tab Content 1: Log List -->
+      <div id="tabContentLog" style="flex: 1; overflow-y: auto;">
+        <ol class="log-list" id="logList"></ol>
+      </div>
+
+      <!-- Tab Content 2: Match Chat -->
+      <div id="tabContentChat" style="display: none; flex-direction: column; flex: 1; min-height: 360px;">
+        <div id="matchChatMsgs" style="flex: 1; overflow-y: auto; max-height: 340px; padding: 6px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="text-align: center; color: var(--muted); font-size: 12px; padding: 16px;">Đang tải tin nhắn trận đấu...</div>
+        </div>
+
+        {% if current_user %}
+        <form onsubmit="handleSendMatchChat(event)" style="display: flex; gap: 6px; padding: 8px 4px; border-top: 1px solid var(--line); margin-top: auto;">
+          <input type="text" id="matchChatInput" placeholder="Nhắn tin với đối thủ..." maxlength="300" style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--line); border-radius: 8px; color: #fff; padding: 6px 10px; font-size: 12px; outline: none;">
+          <button type="submit" class="btn btn-primary btn-sm">Gửi</button>
+        </form>
+        {% else %}
+        <div style="padding: 8px; text-align: center; font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); margin-top: auto;">
+          <a href="/login" style="color: var(--accent);">Đăng nhập</a> để trò chuyện cùng đối thủ.
+        </div>
+        {% endif %}
+      </div>
     </div>
   </aside>
 </div>
@@ -104,20 +135,126 @@
 {% block scripts %}
 <script src="/static/js/visualizer.js"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', async () => {
-    const matchId = {{ match_id }};
-    const visualizer = new ReplayVisualizer({ matchId: matchId });
+  const MATCH_ID = {{ match_id }};
+  let activeTab = 'log';
+  let matchChatInterval = null;
 
-    // Update player names from match replay once fetched
+  function switchRightTab(tab) {
+    activeTab = tab;
+    const btnLog = document.getElementById('tabBtnLog');
+    const btnChat = document.getElementById('tabBtnChat');
+    const contentLog = document.getElementById('tabContentLog');
+    const contentChat = document.getElementById('tabContentChat');
+
+    if (tab === 'log') {
+      btnLog.style.borderBottomColor = 'var(--accent)';
+      btnLog.style.color = '#fff';
+      btnChat.style.borderBottomColor = 'transparent';
+      btnChat.style.color = 'var(--muted)';
+      contentLog.style.display = 'block';
+      contentChat.style.display = 'none';
+      if (matchChatInterval) {
+        clearInterval(matchChatInterval);
+        matchChatInterval = null;
+      }
+    } else {
+      btnChat.style.borderBottomColor = 'var(--accent)';
+      btnChat.style.color = '#fff';
+      btnLog.style.borderBottomColor = 'transparent';
+      btnLog.style.color = 'var(--muted)';
+      contentLog.style.display = 'none';
+      contentChat.style.display = 'flex';
+      loadMatchMessages();
+      if (!matchChatInterval) {
+        matchChatInterval = setInterval(loadMatchMessages, 3000);
+      }
+    }
+  }
+
+  async function loadMatchMessages() {
+    const container = document.getElementById('matchChatMsgs');
+    if (!container) return;
     try {
-      const res = await fetch(`/api/matches/${matchId}`);
+      const res = await fetch(`/api/chat/messages?channel=match&match_id=${MATCH_ID}&limit=50`);
+      if (!res.ok) return;
+      const msgs = await res.json();
+      if (msgs.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--muted); font-size: 12px; padding: 20px;">Chưa có tin nhắn nào trong trận này. Hãy gửi lời chào đối thủ!</div>';
+        return;
+      }
+
+      container.innerHTML = msgs.map(m => {
+        const icon = AVATAR_ICONS[m.user?.avatar] || '🥷';
+        return `
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 6px 10px; font-size: 12px;">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+              <span>${icon}</span>
+              <strong style="color: #fff;">${m.user?.username || 'Khách'}</strong>
+              <span style="font-size: 10px; color: var(--muted); margin-left: auto;">${m.created_at || ''}</span>
+            </div>
+            <div style="color: #cbd5e1; word-break: break-word;">${escapeHtml(m.content)}</div>
+          </div>
+        `;
+      }).join('');
+      container.scrollTop = container.scrollHeight;
+    } catch (err) {
+      console.warn('Error loading match chat:', err);
+    }
+  }
+
+  async function handleSendMatchChat(e) {
+    e.preventDefault();
+    const input = document.getElementById('matchChatInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    try {
+      const res = await fetch('/api/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: text,
+          channel: 'match',
+          match_id: MATCH_ID
+        })
+      });
+      if (res.ok) {
+        await loadMatchMessages();
+      } else {
+        const err = await res.json();
+        alert(err.detail || 'Không thể gửi tin nhắn');
+      }
+    } catch (err) {
+      console.error('Match chat send error:', err);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const visualizer = new ReplayVisualizer({ matchId: MATCH_ID });
+
+    // Update player names and avatars from match replay once fetched
+    try {
+      const res = await fetch(`/api/matches/${MATCH_ID}`);
       if (res.ok) {
         const m = await res.json();
         if (m.player1) {
           document.getElementById('p1Name').textContent = m.player1.username;
+          const p1Icon = AVATAR_ICONS[m.player1.avatar] || '🥷';
+          const p1Card = document.querySelector('.player-card.p1 h3');
+          if (p1Card && !document.getElementById('p1Avatar')) {
+            const span = document.createElement('span');
+            span.id = 'p1Avatar';
+            span.style.fontSize = '20px';
+            span.textContent = p1Icon + ' ';
+            p1Card.prepend(span);
+          }
         }
         if (m.player2) {
           document.getElementById('p2Name').textContent = m.player2.username;
+          const p2Icon = AVATAR_ICONS[m.player2.avatar] || '🥷';
+          const p2AvatarEl = document.getElementById('p2Avatar');
+          if (p2AvatarEl) p2AvatarEl.textContent = p2Icon;
         }
       }
     } catch (err) {

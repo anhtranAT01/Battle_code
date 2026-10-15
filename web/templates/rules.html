@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Luật Chơi & Chiến Thuật (Rules & Strategy) - Battlecode 9x9{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">📖 Luật Chơi & Cẩm Nang Chiến Thuật (Rules & Strategy)</h1>
+    <div class="page-subtitle">Nắm vững quy tắc bàn cờ 9×9 Rock-Paper-Scissors Chess để lập trình Bot bất bại!</div>
+  </div>
+
+  <div style="display: flex; gap: 10px;">
+    <a href="/boss" class="btn btn-primary btn-sm">🤖 Thử Thách Boss AI</a>
+    <a href="/profile" class="btn btn-sm">📤 Nộp Bot Của Bạn</a>
+  </div>
+</div>
+
+<!-- 1. CÁC QUY TẮC CƠ BẢN -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <h2 class="card-title">1. Quy Tắc Cơ Bản & Bàn Cờ 9×9</h2>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; font-size: 14px; line-height: 1.6;">
+    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 16px; border: 1px solid var(--line);">
+      <h3 style="color: var(--accent); margin-top: 0;">🏁 Bàn Cờ & Tọa Độ</h3>
+      <p>
+        Bàn cờ có kích thước <strong>9 hàng (1..9) × 9 cột (a..i)</strong>.
+      </p>
+      <ul>
+        <li><strong>Người chơi 1 (Đỏ):</strong> Bắt đầu từ hàng 1-2, mục tiêu cờ đối thủ là ô <code>i9</code> (góc trên-phải).</li>
+        <li><strong>Người chơi 2 (Xanh):</strong> Bắt đầu từ hàng 8-9, mục tiêu cờ đối thủ là ô <code>a1</code> (góc dưới-trái).</li>
+      </ul>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 16px; border: 1px solid var(--line);">
+      <h3 style="color: var(--accent); margin-top: 0;">🧭 Quy Tắc Di Chuyển</h3>
+      <p>
+        Mỗi lượt đi, bạn được chọn di chuyển <strong>1 quân cờ</strong> bất kỳ của mình:
+      </p>
+      <ul>
+        <li>Di chuyển sang <strong>8 hướng xung quanh</strong> (ngang, dọc, chéo).</li>
+        <li>Mỗi bước đi tối đa <strong>1 ô</strong>.</li>
+        <li>Không thể đi vào ô đang có quân đồng minh chiếm đóng.</li>
+      </ul>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 16px; border: 1px solid var(--line);">
+      <h3 style="color: var(--accent); margin-top: 0;">⚔️ Tam Giác Tương Khắc (RPS)</h3>
+      <p>
+        Khi di chuyển vào ô có quân đối thủ, chiến đấu diễn ra theo quy tắc Kéo-Búa-Bao kinh điển:
+      </p>
+      <div style="font-size: 16px; font-weight: 700; display: flex; flex-direction: column; gap: 8px; padding: 8px 0;">
+        <span style="color: #f87171;">✊ Búa (Rock) đập ✌ Kéo (Scissors)</span>
+        <span style="color: #60a5fa;">✌ Kéo (Scissors) cắt ✋ Bao (Paper)</span>
+        <span style="color: #34d399;">✋ Bao (Paper) bọc ✊ Búa (Rock)</span>
+      </div>
+      <p style="font-size: 12px; color: var(--muted); margin: 0;">
+        *Nếu 2 quân cùng loại va chạm, cả hai quân đều bị tiêu diệt khỏi bàn cờ (Mutual destruction).
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- 2. ĐIỀU KIỆN CHIẾN THẮNG -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <h2 class="card-title">2. Ba (3) Điều Kiện Giành Chiến Thắng</h2>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+    <!-- Win 1 -->
+    <div style="background: linear-gradient(180deg, rgba(239, 68, 68, 0.1) 0%, rgba(0,0,0,0.2) 100%); border-radius: 8px; padding: 20px; border: 1px solid rgba(239, 68, 68, 0.3);">
+      <div style="font-size: 32px; margin-bottom: 8px;">🚩</div>
+      <h3 style="color: #f87171; margin: 0 0 8px;">1. Chiếm Cờ (Flag Capture)</h3>
+      <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6; margin: 0;">
+        Đưa bất kỳ quân nào của bạn tiến tới ô cờ căn cứ của đối phương (Đỏ tới <code>i9</code>, Xanh tới <code>a1</code>), hoặc tiêu diệt được quân Cờ của đối phương. Đây là chiến thắng ngay lập tức và vẻ vang nhất!
+      </p>
+    </div>
+
+    <!-- Win 2 -->
+    <div style="background: linear-gradient(180deg, rgba(59, 130, 246, 0.1) 0%, rgba(0,0,0,0.2) 100%); border-radius: 8px; padding: 20px; border: 1px solid rgba(59, 130, 246, 0.3);">
+      <div style="font-size: 32px; margin-bottom: 8px;">💥</div>
+      <h3 style="color: #60a5fa; margin: 0 0 8px;">2. Quét Sạch Quân (Wipeout)</h3>
+      <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6; margin: 0;">
+        Tiêu diệt toàn bộ quân cơ động (Búa, Kéo, Bao) của đối thủ khiến đối phương không còn nước đi hợp lệ nào. Bạn sẽ giành chiến thắng áp đảo (Total Wipeout).
+      </p>
+    </div>
+
+    <!-- Win 3 -->
+    <div style="background: linear-gradient(180deg, rgba(16, 185, 129, 0.1) 0%, rgba(0,0,0,0.2) 100%); border-radius: 8px; padding: 20px; border: 1px solid rgba(16, 185, 129, 0.3);">
+      <div style="font-size: 32px; margin-bottom: 8px;">⏱️</div>
+      <h3 style="color: #34d399; margin: 0 0 8px;">3. Thắng Điểm Hết Giờ (Timeout Score)</h3>
+      <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6; margin: 0;">
+        Nếu trận đấu chạm mốc 200 lượt đi mà chưa có bên nào chiếm cờ hay quét sạch, hệ thống sẽ tính điểm vật lực: Bên nào còn nhiều quân cờ hơn sẽ giành chiến thắng theo điểm số!
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- 3. GỢI Ý CHIẾN THUẬT & THUẬT TOÁN CHO NGƯỜI CHƠI -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <h2 class="card-title">💡 Gợi Ý Chiến Thuật & Mẹo Lập Trình Cho Kỳ Thủ</h2>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 16px; font-size: 14px; line-height: 1.6;">
+    <div style="background: rgba(255,255,255,0.02); border-left: 4px solid var(--accent); padding: 14px 18px; border-radius: 0 8px 8px 0;">
+      <h4 style="margin: 0 0 6px; color: #fff;">1. Chiến thuật "Bọc lót hộ tống" (Escort Formation)</h4>
+      <p style="margin: 0; color: #cbd5e1;">
+        Luôn giữ quân hỗ trợ đi kèm với quân tấn công. Ví dụ nếu bạn đẩy <strong>✊ Búa</strong> tiến lên tấn công Kéo của đối phương, hãy đặt <strong>✌ Kéo</strong> ngay phía sau hoặc bên cạnh để ngăn chặn <strong>✋ Bao</strong> của địch xông lên ăn Búa của bạn!
+      </p>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.02); border-left: 4px solid #34d399; padding: 14px 18px; border-radius: 0 8px 8px 0;">
+      <h4 style="margin: 0 0 6px; color: #fff;">2. Đánh giá khoảng cách Manhattan tới Cờ (Flag Distance Heuristic)</h4>
+      <p style="margin: 0; color: #cbd5e1;">
+        Trong hàm đánh giá (Evaluation function) của bot, hãy cộng thêm điểm thưởng tỉ lệ nghịch với khoảng cách tới ô đích: <code>bonus = (16 - (abs(r - target_r) + abs(c - target_c))) * 15</code>. Bot sẽ tự khắc biết chọn đường đi ngắn nhất để lao vào chiếm cờ địch!
+      </p>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.02); border-left: 4px solid #f59e0b; padding: 14px 18px; border-radius: 0 8px 8px 0;">
+      <h4 style="margin: 0 0 6px; color: #fff;">3. Thuật toán Minimax với Cắt tỉa Alpha-Beta (Alpha-Beta Pruning)</h4>
+      <p style="margin: 0; color: #cbd5e1;">
+        Để vươn lên Top 1 Bảng xếp hạng, bot của bạn nên sử dụng thuật toán <strong>Minimax</strong> với độ sâu 2-3 lượt đi. Nhờ cơ chế cắt tỉa <strong>Alpha-Beta</strong>, bot có thể loại bỏ ngay các nhánh nhánh nước đi yếu, vừa đảm bảo tốc độ phản hồi dưới 100ms vừa nhìn thấy trước bẫy của đối thủ.
+      </p>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.02); border-left: 4px solid #ec4899; padding: 14px 18px; border-radius: 0 8px 8px 0;">
+      <h4 style="margin: 0 0 6px; color: #fff;">4. Giữ an toàn cho Quân Cờ Bản Địa (Home Flag Defense)</h4>
+      <p style="margin: 0; color: #cbd5e1;">
+        Đừng quên bố trí ít nhất 1 hoặc 2 quân phòng ngự xung quanh ô xuất phát cờ của mình để chặn các pha "luồn lách" thọc sâu của quân đối phương.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- CODE TEMPLATE -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">💻 Mẫu Bot Python Chuẩn (Starter Template)</h2>
+  </div>
+  
+  <p style="font-size: 13px; color: var(--muted); margin-bottom: 12px;">
+    Bạn chỉ cần tạo một file <code>my_bot.py</code> với hàm <code>get_move(board, my_player, history)</code> và tải lên trang Profile:
+  </p>
+
+  <pre style="background: #0d1226; padding: 16px; border-radius: 8px; border: 1px solid var(--line); font-family: monospace; font-size: 13px; color: #a5f3fc; overflow-x: auto;">
+def get_move(board, my_player, history):
+    """
+    board: ma trận 9x9, mỗi ô là None hoặc dict: {'type': 'R'|'P'|'S'|'F', 'player': 1|2}
+    my_player: 1 (Đỏ) hoặc 2 (Xanh)
+    history: danh sách các nước đi trước đó
+    
+    Trả về tuple: ((from_r, from_c), (to_r, to_c))
+    """
+    target = (8, 8) if my_player == 1 else (0, 0)
+    
+    # Tìm kiếm nước đi hợp lệ tốt nhất...
+    # return ((start_r, start_c), (dest_r, dest_c))
+  </pre>
+</div>
+{% endblock %}

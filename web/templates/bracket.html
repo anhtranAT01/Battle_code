@@ -1,23 +1,98 @@
 {% extends "base.html" %}
 
-{% block title %}Nhánh đấu Chung kết (Tournament Bracket) - Battlecode 9x9{% endblock %}
+{% block title %}Giải Đấu & Nhánh Thi Đấu (Tournament Bracket) - Battlecode 9x9{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
-    <h1 class="page-title">Nhánh đấu Chung kết (Tournament Bracket)</h1>
-    <div class="page-subtitle">Vòng chung kết nhánh đấu loại trực tiếp (Single-elimination) cho Top kỳ thủ</div>
+    <h1 class="page-title">🏆 Giải Đấu & Nhánh Thi Đấu (Tournament Bracket)</h1>
+    <div class="page-subtitle">Hệ thống thi đấu loại trực tiếp (Single-Elimination) tranh ngôi Vô Địch Battlecode 9×9</div>
   </div>
 
-  <div style="display: flex; gap: 10px;">
-    <a href="/" class="btn btn-sm">⬅ Bảng xếp hạng</a>
-    <a href="/admin" class="btn btn-sm">⚙ Quản trị Admin</a>
+  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    {% if current_user and current_user.is_admin %}
+      <button class="btn btn-sm" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: #fff; font-weight: 700;" onclick="autoRunBracket()">
+        ⚡ Tự Động Chạy Các Trận
+      </button>
+      <a href="/admin" class="btn btn-sm">⚙ Quản Trị Nhánh</a>
+    {% endif %}
+    <a href="/" class="btn btn-sm">⬅ Bảng Xếp Hạng</a>
   </div>
 </div>
 
+<!-- TOURNAMENT JOIN / REGISTRATION CARD -->
+<div class="card" style="margin-bottom: 24px; border: 1px solid rgba(124, 140, 255, 0.35); background: linear-gradient(135deg, rgba(22, 27, 58, 0.8) 0%, rgba(38, 48, 110, 0.3) 100%);">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+        <span style="font-size: 26px;">⚔️</span>
+        <h2 style="margin: 0; font-size: 18px; color: #fff;">Đăng Ký Tham Gia Giải Đấu</h2>
+        {% if is_joined %}
+          <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); font-weight: 700;">
+            ● Đã Ghi Danh
+          </span>
+        {% endif %}
+      </div>
+      <p style="margin: 0; font-size: 13px; color: var(--muted); max-width: 680px; line-height: 1.5;">
+        Tất cả người chơi có bot hoạt động đều có thể đăng ký tham gia vào nhánh đấu loại trực tiếp. Hệ thống sẽ phân hạt giống dựa theo thứ hạng Elo và tổ chức các trận đấu tự động.
+      </p>
+    </div>
+
+    <div>
+      {% if current_user %}
+        <button class="btn btn-primary" onclick="joinTournament()" style="padding: 10px 20px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 15px rgba(124, 140, 255, 0.4);">
+          {% if is_joined %}
+            🔄 Cập Nhật Bot Tham Gia
+          {% else %}
+            🏆 Ghi Danh Tham Gia Giải Đấu
+          {% endif %}
+        </button>
+      {% else %}
+        <a href="/login" class="btn btn-primary" style="padding: 10px 20px; font-weight: 700;">
+          Đăng nhập để tham gia Giải
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- REGISTERED PARTICIPANTS SECTION -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <h2 class="card-title">👥 Danh Sách Kỳ Thủ Đã Đăng Ký ({{ participants|length }} người chơi)</h2>
+    <span style="font-size: 12px; color: var(--muted);">Cập nhật trực tiếp</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 10px;">
+    {% for p in participants %}
+    <div style="background: rgba(22, 27, 54, 0.6); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+      <div style="font-size: 28px; width: 44px; height: 44px; border-radius: 50%; background: rgba(124, 140, 255, 0.15); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(124, 140, 255, 0.3);">
+        {{ avatar_map.get(p.user.avatar, '🥷') if p.user else '🥷' }}
+      </div>
+      <div style="flex: 1; min-width: 0;">
+        <div style="font-weight: 700; font-size: 14px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          {{ p.user.username if p.user else 'Vô danh' }}
+        </div>
+        <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">
+          Elo: <strong style="color: #fbbf24;">{{ p.user.elo if p.user else 1200 }}</strong>
+        </div>
+        <div style="font-size: 11px; color: var(--accent); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          Bot: {{ p.bot.filename if p.bot else 'Default' }}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div style="grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 24px;">
+      Chưa có kỳ thủ nào đăng ký. Hãy là người đầu tiên ghi danh bằng nút bên trên!
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- BRACKET TREE VISUALIZER -->
 <div class="card" style="margin-bottom: 24px;">
   <div class="card-header">
-    <h2 class="card-title">Cây Nhánh đấu (Bracket Matches)</h2>
+    <h2 class="card-title">🌳 Cây Nhánh Đấu Loại Trực Tiếp (Bracket Elimination Tree)</h2>
   </div>
 
   <div class="bracket-tree">
@@ -29,17 +104,19 @@
         {% for m in bracket_matches %}
           {% if m.round_name.lower() == r_name.lower() %}
             <div class="bracket-match">
-              <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">Trận {{ m.match_index }}</div>
+              <div style="font-size: 11px; color: var(--muted); margin-bottom: 6px;">Trận {{ m.match_index }}</div>
               <div class="team-row {% if m.winner_id and m.winner_id == m.player1_id %}winner{% endif %}">
-                <span>{{ m.player1.username if m.player1 else 'TBD' }}</span>
-                <span>{{ m.score_p1 }}</span>
+                <span>{{ avatar_map.get(m.player1.avatar, '🥷') if m.player1 else '👤' }} {{ m.player1.username if m.player1 else 'TBD' }}</span>
+                <strong>{{ m.score_p1 }}</strong>
               </div>
               <div class="team-row {% if m.winner_id and m.winner_id == m.player2_id %}winner{% endif %}">
-                <span>{{ m.player2.username if m.player2 else 'TBD' }}</span>
-                <span>{{ m.score_p2 }}</span>
+                <span>{{ avatar_map.get(m.player2.avatar, '🥷') if m.player2 else '👤' }} {{ m.player2.username if m.player2 else 'TBD' }}</span>
+                <strong>{{ m.score_p2 }}</strong>
               </div>
-              <div style="margin-top: 6px; font-size: 11px; display: flex; justify-content: space-between;">
-                <span style="color: var(--muted);">{{ m.status }}</span>
+              <div style="margin-top: 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center;">
+                <span class="tag {% if m.status == 'completed' %}green{% else %}yellow{% endif %}">
+                  {{ 'Hoàn thành' if m.status == 'completed' else 'Đang chờ' }}
+                </span>
               </div>
             </div>
           {% endif %}
@@ -49,21 +126,22 @@
   </div>
 </div>
 
+<!-- MATCH DETAILS TABLE -->
 <div class="card">
   <div class="card-header">
-    <h2 class="card-title">Chi tiết các cặp đấu</h2>
+    <h2 class="card-title">📋 Chi Tiết Từng Cặp Đấu Nhánh</h2>
   </div>
 
   <div class="table-wrap">
     <table class="table-dark">
       <thead>
         <tr>
-          <th>ID</th>
+          <th>Mã trận</th>
           <th>Vòng</th>
-          <th>Trận #</th>
           <th>Người chơi 1 (Đỏ)</th>
           <th>Người chơi 2 (Xanh)</th>
           <th>Tỉ số</th>
+          <th>Người chiến thắng</th>
           <th>Trạng thái</th>
         </tr>
       </thead>
@@ -72,14 +150,24 @@
         <tr>
           <td>#{{ bm.id }}</td>
           <td><b>{{ bm.round_name }}</b></td>
-          <td>Trận {{ bm.match_index }}</td>
           <td>
-            <strong style="color: var(--p1);">{{ bm.player1.username if bm.player1 else 'TBD' }}</strong>
+            <strong style="color: var(--p1);">
+              {{ avatar_map.get(bm.player1.avatar, '🥷') if bm.player1 else '' }} {{ bm.player1.username if bm.player1 else 'TBD' }}
+            </strong>
           </td>
           <td>
-            <strong style="color: var(--p2);">{{ bm.player2.username if bm.player2 else 'TBD' }}</strong>
+            <strong style="color: var(--p2);">
+              {{ avatar_map.get(bm.player2.avatar, '🥷') if bm.player2 else '' }} {{ bm.player2.username if bm.player2 else 'TBD' }}
+            </strong>
           </td>
-          <td>{{ bm.score_p1 }} - {{ bm.score_p2 }}</td>
+          <td><b>{{ bm.score_p1 }} - {{ bm.score_p2 }}</b></td>
+          <td>
+            {% if bm.winner %}
+              <span style="color: #34d399; font-weight: 700;">👑 {{ bm.winner.username }}</span>
+            {% else %}
+              <span style="color: var(--muted);">-</span>
+            {% endif %}
+          </td>
           <td>
             {% if bm.status == 'completed' %}
               <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Hoàn thành</span>
@@ -99,4 +187,45 @@
     </table>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function joinTournament() {
+  try {
+    const res = await fetch('/api/admin/tournament/join', {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(data.message || 'Đăng ký tham gia giải đấu thành công!');
+      window.location.reload();
+    } else {
+      alert(data.detail || data.message || 'Không thể đăng ký giải đấu.');
+    }
+  } catch (err) {
+    console.error('Join tournament error:', err);
+    alert('Lỗi kết nối máy chủ.');
+  }
+}
+
+async function autoRunBracket() {
+  if (!confirm('Bạn có chắc chắn muốn chạy tự động tất cả các trận nhánh đang chờ?')) return;
+  try {
+    const res = await fetch('/api/admin/tournament/auto-run', {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`Đã chạy xong ${data.executed_matches} trận nhánh!`);
+      window.location.reload();
+    } else {
+      alert(data.detail || 'Không thể chạy trận đấu.');
+    }
+  } catch (err) {
+    console.error('Auto run error:', err);
+    alert('Lỗi khi chạy trận nhánh.');
+  }
+}
+</script>
 {% endblock %}

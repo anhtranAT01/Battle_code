@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Đấu Boss AI (Boss Arena) - Battlecode 9x9{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">🤖 Đấu Trường Boss AI (Boss Arena)</h1>
+    <div class="page-subtitle">Thử thách thuật toán của bạn trước các Siêu Trí Tuệ Nhân Tạo được huấn luyện đặc biệt!</div>
+  </div>
+
+  <div style="display: flex; gap: 10px; align-items: center;">
+    <a href="/rules" class="btn btn-sm">📖 Xem Luật & Chiến Thuật</a>
+    <a href="/profile" class="btn btn-sm btn-primary">👤 Kiểm tra Bot của bạn</a>
+  </div>
+</div>
+
+<!-- Alert Banner if user has no active bot -->
+{% if not current_user %}
+<div class="card" style="margin-bottom: 24px; border-left: 4px solid var(--warning); background: rgba(245, 158, 11, 0.08);">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <strong style="color: var(--warning); font-size: 15px;">⚠️ Bạn chưa đăng nhập</strong>
+      <div style="color: var(--muted); font-size: 13px; margin-top: 4px;">Đăng nhập và tải lên bot Python để thử thách trực tiếp với Boss AI bằng thuật toán của chính mình! Hoặc bạn vẫn có thể thách đấu thử nghiệm ngay dưới đây.</div>
+    </div>
+    <a href="/login" class="btn btn-sm btn-primary">Đăng nhập ngay</a>
+  </div>
+</div>
+{% endif %}
+
+<div class="boss-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 32px;">
+
+  <!-- BOSS 1: NOVICE / EASY -->
+  <div class="card boss-card" style="border: 1px solid rgba(16, 185, 129, 0.3); position: relative; overflow: hidden; background: linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, rgba(22, 27, 54, 0.9) 100%);">
+    <div style="position: absolute; top: 12px; right: 12px;">
+      <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.4);">ĐỘ KHÓ: DỄ</span>
+    </div>
+    <div style="font-size: 48px; margin-bottom: 12px;">🥉 🤖</div>
+    <h2 style="margin: 0 0 6px; font-size: 20px; color: #34d399;">Novice Bot (Tập Sự)</h2>
+    <div style="color: var(--muted); font-size: 13px; margin-bottom: 16px;">Thuật toán Heuristic Cơ Bản</div>
+    
+    <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6; min-height: 72px;">
+      Bot di chuyển đơn giản, ưu tiên các nước đi ăn quân đối thủ nếu có thể hoặc tiến về phía trước. Phù hợp để kiểm tra độ ổn định và các tính năng cơ bản của bot bạn vừa viết.
+    </p>
+
+    <div style="background: rgba(0,0,0,0.25); border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 12px; color: var(--muted);">
+      <div>• <strong>Thuật toán:</strong> Heuristic Tham Lam (Greedy)</div>
+      <div>• <strong>Độ sâu tìm kiếm:</strong> 1 lượt (Lookahead 1)</div>
+      <div>• <strong>Tốc độ xử lý:</strong> ~1ms / lượt</div>
+    </div>
+
+    <button class="btn btn-primary" style="width: 100%; background: linear-gradient(135deg, #10b981, #059669); border: none;" onclick="startBossFight('easy')">
+      ⚔️ Thách Đấu Novice Bot
+    </button>
+  </div>
+
+  <!-- BOSS 2: MEDIUM / TACTICAL -->
+  <div class="card boss-card" style="border: 1px solid rgba(59, 130, 246, 0.4); position: relative; overflow: hidden; background: linear-gradient(180deg, rgba(59, 130, 246, 0.08) 0%, rgba(22, 27, 54, 0.9) 100%);">
+    <div style="position: absolute; top: 12px; right: 12px;">
+      <span class="tag" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-weight: 700; border: 1px solid rgba(59, 130, 246, 0.4);">ĐỘ KHÓ: TRUNG BÌNH</span>
+    </div>
+    <div style="font-size: 48px; margin-bottom: 12px;">🥈 ⚔️</div>
+    <h2 style="margin: 0 0 6px; font-size: 20px; color: #60a5fa;">Tactical Hunter (Thợ Săn)</h2>
+    <div style="color: var(--muted); font-size: 13px; margin-bottom: 16px;">Chiến Thuật Săn Cờ & Phản Đòn</div>
+    
+    <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6; min-height: 72px;">
+      Biết tính toán khoảng cách Manhattan tới Cờ đối thủ (i9/a1), bảo vệ cờ của mình và chủ động truy đuổi quân yếu thế theo quy tắc Búa-Kéo-Bao.
+    </p>
+
+    <div style="background: rgba(0,0,0,0.25); border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 12px; color: var(--muted);">
+      <div>• <strong>Thuật toán:</strong> Heuristic Đa Chiều (Positional Eval)</div>
+      <div>• <strong>Trọng số:</strong> Flag Distance, Piece Danger, Center</div>
+      <div>• <strong>Tốc độ xử lý:</strong> ~2ms / lượt</div>
+    </div>
+
+    <button class="btn btn-primary" style="width: 100%; background: linear-gradient(135deg, #3b82f6, #2563eb); border: none;" onclick="startBossFight('medium')">
+      ⚔️ Thách Đấu Tactical Hunter
+    </button>
+  </div>
+
+  <!-- BOSS 3: HARD / ALPHA-BETA NIGHTMARE -->
+  <div class="card boss-card" style="border: 1px solid rgba(239, 68, 68, 0.6); position: relative; overflow: hidden; background: linear-gradient(180deg, rgba(239, 68, 68, 0.12) 0%, rgba(22, 27, 54, 0.9) 100%); box-shadow: 0 0 25px rgba(239, 68, 68, 0.15);">
+    <div style="position: absolute; top: 12px; right: 12px;">
+      <span class="tag" style="background: rgba(239, 68, 68, 0.25); color: #f87171; font-weight: 800; border: 1px solid rgba(239, 68, 68, 0.5);">👑 CỰC KHÓ (TRÙM CUỐI)</span>
+    </div>
+    <div style="font-size: 48px; margin-bottom: 12px;">👑 🐉</div>
+    <h2 style="margin: 0 0 6px; font-size: 20px; color: #f87171;">Nightmare Boss (Alpha-Beta AI)</h2>
+    <div style="color: var(--muted); font-size: 13px; margin-bottom: 16px;">Minimax với Cắt Tỉa Alpha-Beta & Đánh Giá Chiến Thuật Sâu</div>
+    
+    <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6; min-height: 72px;">
+      Sử dụng thuật toán <strong>Minimax với kỹ thuật Cắt tỉa Alpha-Beta (α-β Pruning)</strong>. Nhìn trước các bước phản công của đối thủ, thiết lập bẫy bắt cờ bất khả kháng và kiểm soát toàn bộ trung tâm bàn cờ 9×9!
+    </p>
+
+    <div style="background: rgba(0,0,0,0.35); border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 12px; color: var(--muted);">
+      <div>• <strong>Thuật toán:</strong> Minimax + Alpha-Beta Pruning (α-β)</div>
+      <div>• <strong>Hàm đánh giá:</strong> Vật lực, Khoảng cách cờ, Kiểm soát ô, Nguy cơ quét sạch</div>
+      <div>• <strong>Khả năng:</strong> Bẫy thế cờ & phản công tối ưu</div>
+    </div>
+
+    <button class="btn btn-primary" style="width: 100%; background: linear-gradient(135deg, #ef4444, #dc2626); border: none; font-weight: 700; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);" onclick="startBossFight('hard')">
+      🔥 THÁCH ĐẤU TRÙM CUỐI (ALPHA-BETA)
+    </button>
+  </div>
+
+</div>
+
+<!-- Loading overlay -->
+<div id="fightModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 999; align-items: center; justify-content: center; flex-direction: column;">
+  <div style="font-size: 56px; animation: spin 1.5s infinite linear;">⚔️</div>
+  <h2 style="color: #fff; margin-top: 16px;">Đang khởi chạy trận chiến với Boss...</h2>
+  <p style="color: var(--muted); font-size: 14px;">Thuật toán đang tính toán từng nước đi với tốc độ siêu tốc (~30ms)...</p>
+</div>
+
+<style>
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.boss-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.boss-card:hover {
+  transform: translateY(-5px);
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function startBossFight(difficulty) {
+  const modal = document.getElementById('fightModal');
+  modal.style.display = 'flex';
+
+  try {
+    const res = await fetch('/api/matches/boss', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ difficulty: difficulty })
+    });
+
+    const data = await res.json();
+    if (res.ok && data.match_id) {
+      // Replay is instantly ready! Redirect immediately
+      window.location.href = `/replay/${data.match_id}`;
+    } else {
+      modal.style.display = 'none';
+      alert(data.detail || data.message || 'Lỗi khi khởi chạy trận đấu với Boss AI.');
+    }
+  } catch (err) {
+    modal.style.display = 'none';
+    console.error('Boss fight error:', err);
+    alert('Không thể kết nối đến máy chủ. Vui lòng thử lại sau.');
+  }
+}
+</script>
+{% endblock %}
