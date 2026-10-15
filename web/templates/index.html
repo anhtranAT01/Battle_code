@@ -116,7 +116,7 @@
         return;
       }
 
-      alert(`Đã khởi tạo trận đấu #${data.match_id}! Đang chuyển hướng tới trang replay...`);
+      // Redirect immediately to replay page where real-time polling will display progress
       window.location.href = `/replay/${data.match_id}`;
     } catch (err) {
       alert(`Lỗi kết nối: ${err.message}`);

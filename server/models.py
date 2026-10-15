@@ -6,7 +6,7 @@ import hmac
 import secrets
 from typing import List, Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from server.database import Base
@@ -86,6 +86,7 @@ class Bot(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     filepath: Mapped[str] = mapped_column(String(512), nullable=False)
+    source_code: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     uploaded_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -114,6 +115,7 @@ class Match(Base):
     p2_elo_before: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     p2_elo_after: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     replay_path: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    replay_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_bracket: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

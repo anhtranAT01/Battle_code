@@ -117,18 +117,28 @@ def seed_admin_and_starter_bots(db_session: Optional[Session] = None) -> None:
         has_active = any(b.is_active for b in existing_bots.values())
 
         for bot_name, bot_path, default_active in candidate_bots:
+            source = bot_path.read_text(encoding="utf-8") if bot_path.exists() else None
+            resolved_str = str(bot_path.resolve()) if bot_path.exists() else ""
             if bot_name not in existing_bots and bot_path.exists():
                 is_active = (not has_active) if default_active else False
                 new_bot = Bot(
                     user_id=admin.id,
                     filename=bot_name,
-                    filepath=str(bot_path.resolve()),
+                    filepath=resolved_str,
+                    source_code=source,
                     is_active=is_active,
                 )
                 db.add(new_bot)
                 if is_active:
                     has_active = True
                 print(f"[INFO] Seeded starter bot '{bot_name}' for administrator.")
+            elif bot_name in existing_bots and bot_path.exists():
+                # Repair stale / cross-platform paths if file is missing at stored path
+                b = existing_bots[bot_name]
+                if b.filepath != resolved_str or not Path(b.filepath).is_file():
+                    b.filepath = resolved_str
+                if source and not getattr(b, "source_code", None):
+                    b.source_code = source
 
         # Ensure at least one bot is active if any bots exist
         admin_bots = db.query(Bot).filter(Bot.user_id == admin.id).all()

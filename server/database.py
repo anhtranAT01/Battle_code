@@ -8,6 +8,8 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 # Database URL defaulting to SQLite app.db, configurable via DATABASE_URL environment variable
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app.db")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
@@ -51,7 +53,22 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db(target_engine=None) -> None:
-    """Create all database tables registered on Base metadata."""
+    """Create all database tables registered on Base metadata and add missing columns."""
+    from sqlalchemy import text
     from server import models  # noqa: F401
     eng = target_engine or engine
     Base.metadata.create_all(bind=eng)
+
+    # Safe auto-migration for existing SQLite / Postgres tables
+    with eng.connect() as conn:
+        for table, col, col_type in [
+            ("bots", "source_code", "TEXT"),
+            ("matches", "replay_data", "TEXT"),
+        ]:
+            try:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+                conn.commit()
+            except Exception:
+                # Column already exists or table not ready
+                pass
+

@@ -7,17 +7,66 @@ and match statistics, and committing outcomes to the database.
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from typing import Any, Callable
 
 from engine.runner import run_match, save_replay
 from server.database import SessionLocal
-from server.models import Match, TournamentSetting, User
+from server.models import Bot, Match, TournamentSetting, User
 from server.tournament import apply_elo_change, calculate_elo_delta
 from server.tournament_config import load_tournament_config
 
 logger = logging.getLogger(__name__)
+
+
+def resolve_bot_filepath(bot: Bot | None, fallback_path: str) -> str:
+    """Resolve a valid, executable file path on disk for a bot.
+
+    If the provided path or bot record does not point to an existing file,
+    searches known starter_kit/ and bots/ directories, or restores from source_code.
+    """
+    repo_root = Path(__file__).resolve().parent.parent
+
+    # 1. Check fallback_path if it exists
+    if fallback_path and Path(fallback_path).is_file():
+        return str(Path(fallback_path).resolve())
+
+    # 2. Check bot.filepath if available
+    if bot and bot.filepath and Path(bot.filepath).is_file():
+        return str(Path(bot.filepath).resolve())
+
+    filename = bot.filename if bot else Path(fallback_path).name
+
+    # 3. Check starter_kit by filename
+    if filename:
+        starter_cand = repo_root / "starter_kit" / filename
+        if starter_cand.is_file():
+            return str(starter_cand.resolve())
+
+    # 4. Check bots/ directory by filename
+    if filename:
+        bots_cand = repo_root / "bots" / filename
+        if bots_cand.is_file():
+            return str(bots_cand.resolve())
+
+    # 5. Check relative to repo_root
+    if fallback_path:
+        rel_cand = repo_root / fallback_path
+        if rel_cand.is_file():
+            return str(rel_cand.resolve())
+
+    # 6. Recreate from source_code if available
+    if bot and getattr(bot, "source_code", None):
+        bots_dir = repo_root / "bots"
+        bots_dir.mkdir(parents=True, exist_ok=True)
+        safe_name = f"bot_{bot.id}_{Path(filename or 'bot.py').name}"
+        recreated = bots_dir / safe_name
+        recreated.write_text(bot.source_code, encoding="utf-8")
+        return str(recreated.resolve())
+
+    return fallback_path
 
 
 def _get_setting_value(db, key: str, default: Any, caster: Callable[[str], Any]) -> Any:
@@ -94,10 +143,16 @@ def execute_match_job(
             "match_id": match_id,
         }
 
+        bot1 = db.query(Bot).filter(Bot.id == match.bot1_id).first() if match.bot1_id else None
+        bot2 = db.query(Bot).filter(Bot.id == match.bot2_id).first() if match.bot2_id else None
+
+        actual_bot1_path = resolve_bot_filepath(bot1, bot1_path)
+        actual_bot2_path = resolve_bot_filepath(bot2, bot2_path)
+
         # Run match in isolated worker processes
         match_result = run_match(
-            bot1_path=bot1_path,
-            bot2_path=bot2_path,
+            bot1_path=actual_bot1_path,
+            bot2_path=actual_bot2_path,
             max_turns=max_turns,
             timeout_per_turn=timeout_seconds,
             player1_info=p1_meta,
@@ -116,6 +171,7 @@ def execute_match_job(
         total_turns = match_result.get("total_turns", 0)
 
         match.replay_path = replay_filepath
+        match.replay_data = json.dumps(match_result, ensure_ascii=False)
         match.win_reason = win_reason
         match.total_turns = total_turns
 
@@ -175,9 +231,21 @@ def execute_match_job(
             match = db.query(Match).filter(Match.id == match_id).first()
             if match:
                 match.win_reason = f"Execution error: {exc}"
+                error_payload = {
+                    "match_id": str(match_id),
+                    "status": "error",
+                    "error": str(exc),
+                    "win_reason": f"Execution error: {exc}",
+                    "winner": None,
+                    "total_turns": 0,
+                    "moves": [],
+                    "initial_board": [],
+                }
+                match.replay_data = json.dumps(error_payload, ensure_ascii=False)
                 db.commit()
         except Exception:
             pass
         return None
     finally:
         db.close()
+

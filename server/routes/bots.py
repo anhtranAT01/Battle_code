@@ -73,6 +73,7 @@ async def upload_bot(
         user_id=current_user.id,
         filename=raw_filename,
         filepath=str(target_path),
+        source_code=source_code,
         is_active=True,
     )
     db.add(new_bot)

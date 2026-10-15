@@ -327,6 +327,7 @@ def test_execute_match_job_direct(tmp_path):
         assert updated_match.winner_id is not None or updated_match.win_reason is not None
         assert updated_match.total_turns > 0
         assert updated_match.replay_path is not None
+        assert updated_match.replay_data is not None
         assert Path(updated_match.replay_path).is_file()
 
         u1_up = db2.query(User).filter(User.id == u1_id).first()
@@ -336,3 +337,59 @@ def test_execute_match_job_direct(tmp_path):
         assert (u2_up.wins + u2_up.losses + u2_up.draws) == 1
     finally:
         db2.close()
+
+
+def test_replay_resilience_and_status():
+    """Verify replay data retrieval from DB and running/error states."""
+    import json
+    db = SessionLocal()
+    try:
+        u1 = User(username="resilient_p1", password_hash="hash")
+        u2 = User(username="resilient_p2", password_hash="hash")
+        db.add_all([u1, u2])
+        db.commit()
+
+        # 1. Match still running
+        m_running = Match(player1_id=u1.id, player2_id=u2.id)
+        db.add(m_running)
+        db.commit()
+        db.refresh(m_running)
+
+        res_running = client.get(f"/api/matches/{m_running.id}/replay")
+        assert res_running.status_code == 404
+        assert "running" in res_running.json()["detail"].lower()
+
+        # 2. Match with replay_data in DB (simulating ephemeral disk loss)
+        fake_payload = {"match_id": str(m_running.id), "moves": [{"turn": 1}], "initial_board": []}
+        m_saved = Match(
+            player1_id=u1.id,
+            player2_id=u2.id,
+            replay_path="/non_existent/disk/path.json",
+            replay_data=json.dumps(fake_payload),
+        )
+        db.add(m_saved)
+        db.commit()
+        db.refresh(m_saved)
+
+        res_saved = client.get(f"/api/matches/{m_saved.id}/replay")
+        assert res_saved.status_code == 200
+        assert res_saved.json()["moves"] == [{"turn": 1}]
+
+        # 3. Match that ended with an execution error
+        m_err = Match(
+            player1_id=u1.id,
+            player2_id=u2.id,
+            win_reason="Execution error: Subprocess timeout",
+        )
+        db.add(m_err)
+        db.commit()
+        db.refresh(m_err)
+
+        res_err = client.get(f"/api/matches/{m_err.id}/replay")
+        assert res_err.status_code == 200
+        err_data = res_err.json()
+        assert err_data["status"] == "error"
+        assert "Execution error" in err_data["error"]
+    finally:
+        db.close()
+

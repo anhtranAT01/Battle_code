@@ -182,19 +182,86 @@ class ReplayVisualizer {
     });
   }
 
-  /** Fetch replay JSON data from server API */
-  async fetchReplay(matchId) {
+  /** Fetch replay JSON data from server API with polling for in-progress matches */
+  async fetchReplay(matchId, attempt = 1, maxAttempts = 30) {
+    if (this.dom.turnBanner) {
+      this.dom.turnBanner.textContent = attempt === 1
+        ? "Đang tải dữ liệu trận đấu..."
+        : `⚔️ Trận đấu đang diễn ra... Đang chờ kết quả (${attempt}/${maxAttempts})...`;
+    }
+
     try {
       const res = await fetch(`/api/matches/${matchId}/replay`);
-      if (!res.ok) {
-        throw new Error(`Failed to load replay (HTTP ${res.status})`);
+
+      // If server signals match is still running/queued (202 or 404 with running detail)
+      if (res.status === 202 || (res.status === 404 && attempt < maxAttempts)) {
+        let isRunning = false;
+        let errDetail = "";
+        try {
+          const errData = await res.json();
+          errDetail = (errData.detail || "").toLowerCase();
+          isRunning = errDetail.includes("running") || errDetail.includes("available");
+        } catch (_) {}
+
+        if (isRunning || res.status === 202 || attempt <= 3) {
+          if (this.dom.turnBanner) {
+            this.dom.turnBanner.textContent = `⚔️ Trận đấu đang diễn ra... Vui lòng đợi trong giây lát (${attempt}/${maxAttempts})`;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          return await this.fetchReplay(matchId, attempt + 1, maxAttempts);
+        }
+        throw new Error(errDetail || `Trận đấu không tồn tại (HTTP ${res.status})`);
       }
+
+      if (!res.ok) {
+        let errMsg = `HTTP ${res.status}`;
+        try {
+          const errData = await res.json();
+          errMsg = errData.detail || errMsg;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
+
       const data = await res.json();
+
+      // If response payload signals match is still executing
+      if (data.status === "running" && attempt < maxAttempts) {
+        if (this.dom.turnBanner) {
+          this.dom.turnBanner.textContent = `⚔️ Trận đấu đang diễn ra... Vui lòng đợi trong giây lát (${attempt}/${maxAttempts})`;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return await this.fetchReplay(matchId, attempt + 1, maxAttempts);
+      }
+
+      // If match encountered an execution error
+      if (data.status === "error") {
+        const errorText = data.error || data.win_reason || "Lỗi không xác định";
+        if (this.dom.turnBanner) {
+          this.dom.turnBanner.textContent = `Lỗi trận đấu: ${errorText}`;
+        }
+        if (this.dom.winnerBanner) {
+          this.dom.winnerBanner.classList.remove("hidden");
+          if (this.dom.winnerTitle) this.dom.winnerTitle.textContent = "Trận đấu gặp lỗi";
+          if (this.dom.winnerDesc) this.dom.winnerDesc.textContent = errorText;
+        }
+        return;
+      }
+
       this.loadReplay(data);
+
+      // Dynamically update player names from replay payload if present
+      if (data.player1 && data.player1.username) {
+        const p1Elem = document.getElementById("p1Name");
+        if (p1Elem) p1Elem.textContent = data.player1.username;
+      }
+      if (data.player2 && data.player2.username) {
+        const p2Elem = document.getElementById("p2Name");
+        if (p2Elem) p2Elem.textContent = data.player2.username;
+      }
     } catch (err) {
-      console.error('Error fetching replay:', err);
+      console.error("Error fetching replay:", err);
       if (this.dom.turnBanner) {
-        this.dom.turnBanner.textContent = `Replay Error: ${err.message}`;
+        this.dom.turnBanner.textContent = `Không thể tải trận đấu: ${err.message}`;
       }
     }
   }

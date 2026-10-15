@@ -42,8 +42,13 @@ def _is_portal_open_now(db: Session) -> bool:
 
 def _serialize_match(m: Match) -> Dict[str, Any]:
     """Serialize a Match SQLAlchemy entity to a dictionary."""
+    is_done = bool(m.replay_path or getattr(m, "replay_data", None))
+    has_err = bool(m.win_reason and "error" in m.win_reason.lower())
+    match_status = "completed" if is_done else ("error" if has_err else "running")
+
     return {
         "id": m.id,
+        "status": match_status,
         "player1_id": m.player1_id,
         "player2_id": m.player2_id,
         "player1": {"id": m.player1.id, "username": m.player1.username} if m.player1 else None,
@@ -187,24 +192,57 @@ def get_match_replay(
             detail="Match not found.",
         )
 
-    if not match.replay_path:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Replay is not yet available or match is still running.",
-        )
+    # 1. Check replay_data stored directly in database
+    if getattr(match, "replay_data", None):
+        try:
+            return json.loads(match.replay_data)
+        except Exception:
+            pass
 
-    replay_path = Path(match.replay_path)
-    if not replay_path.is_file():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Replay file could not be found on server disk.",
-        )
+    # 2. Check replay file on disk with resilient multi-path discovery
+    candidates: List[Optional[Path]] = []
+    if match.replay_path:
+        candidates.append(Path(match.replay_path))
+        candidates.append(Path(match.replay_path).resolve())
 
-    try:
-        data = json.loads(replay_path.read_text(encoding="utf-8"))
-        return data
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to read replay data: {exc}",
-        )
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    candidates.append(repo_root / "replays" / f"match_{match_id}.json")
+    candidates.append(Path("replays").resolve() / f"match_{match_id}.json")
+    if match.replay_path:
+        candidates.append(Path("replays").resolve() / Path(match.replay_path).name)
+
+    for c in candidates:
+        if c and c.is_file():
+            try:
+                data = json.loads(c.read_text(encoding="utf-8"))
+                # Cache into database for future requests
+                try:
+                    match.replay_data = json.dumps(data, ensure_ascii=False)
+                    db.commit()
+                except Exception:
+                    pass
+                return data
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to read replay data: {exc}",
+                )
+
+    # 3. Check if match has concluded with an execution error
+    if match.win_reason and ("error" in match.win_reason.lower() or "forfeit" in match.win_reason.lower()):
+        return {
+            "match_id": str(match.id),
+            "status": "error",
+            "error": match.win_reason,
+            "win_reason": match.win_reason,
+            "winner": match.winner_id,
+            "total_turns": match.total_turns or 0,
+            "moves": [],
+            "initial_board": [],
+        }
+
+    # 4. Match is still queued or running in background
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Replay is not yet available or match is still running.",
+    )
