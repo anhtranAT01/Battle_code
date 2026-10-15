@@ -1,0 +1,500 @@
+{% extends "base.html" %}
+
+{% block title %}Dữ liệu Trực quan (Public Data Explorer) - Battlecode 9x9{% endblock %}
+
+{% block extra_head %}
+<style>
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .kpi-card {
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    box-shadow: var(--shadow-1);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .kpi-icon {
+    font-size: 32px;
+    background: rgba(124, 140, 255, 0.1);
+    border: 1px solid rgba(124, 140, 255, 0.25);
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+  }
+  .kpi-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .kpi-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .tabs-nav {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    padding: 10px 18px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .tab-btn:hover {
+    color: var(--text);
+  }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-pane {
+    display: none;
+  }
+  .tab-pane.active {
+    display: block;
+  }
+
+  .search-bar-wrap {
+    margin-bottom: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .search-input {
+    flex: 1;
+    max-width: 400px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 9px 14px;
+    color: var(--text);
+    font-size: 14px;
+  }
+  .search-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  /* Code Modal */
+  .code-modal-backdrop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .code-modal {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    max-width: 800px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-2);
+  }
+  .code-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .code-modal-body {
+    padding: 16px 20px;
+    overflow-y: auto;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 13px;
+    background: #0d1124;
+    color: #cad3f5;
+    white-space: pre-wrap;
+    word-break: break-all;
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">📊 Trực quan hóa Dữ liệu (Public Data Explorer)</h1>
+    <div class="page-subtitle">Xem trực tiếp toàn bộ dữ liệu người chơi, bot, trận đấu và cấu hình giải đấu</div>
+  </div>
+
+  <div style="display: flex; gap: 10px;">
+    <a href="/" class="btn btn-sm">⬅ Bảng xếp hạng</a>
+    <a href="/bracket" class="btn btn-sm">🏆 Nhánh đấu</a>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-icon">👥</div>
+    <div>
+      <div class="kpi-label">Tổng người chơi</div>
+      <div class="kpi-value">{{ stats.total_users }}</div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon">⚔️</div>
+    <div>
+      <div class="kpi-label">Tổng trận đấu</div>
+      <div class="kpi-value">{{ stats.total_matches }}</div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon">🤖</div>
+    <div>
+      <div class="kpi-label">Mã nguồn Bots</div>
+      <div class="kpi-value">{{ stats.active_bots }} <span style="font-size: 13px; color: var(--muted); font-weight: normal;">/ {{ stats.total_bots }}</span></div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon">⚡</div>
+    <div>
+      <div class="kpi-label">Hệ số Elo ngày</div>
+      <div class="kpi-value">x{{ settings.daily_multiplier_x }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabs Navigation -->
+<div class="tabs-nav">
+  <button class="tab-btn active" onclick="switchTab('matches', this)">⚔️ Trận đấu (Matches)</button>
+  <button class="tab-btn" onclick="switchTab('users', this)">👥 Người chơi (Users)</button>
+  <button class="tab-btn" onclick="switchTab('bots', this)">🤖 Danh sách Bots</button>
+  <button class="tab-btn" onclick="switchTab('settings', this)">⚙️ Cài đặt & API JSON</button>
+</div>
+
+<!-- Global Filter Input -->
+<div class="search-bar-wrap">
+  <input type="text" class="search-input" id="tableSearch" placeholder="🔍 Tìm kiếm nhanh (Username, Mã trận, Bot...)" onkeyup="filterActiveTable()">
+  <span style="font-size: 12px; color: var(--muted);" id="rowCountLabel"></span>
+</div>
+
+<!-- TAB 1: MATCHES -->
+<div class="tab-pane active" id="pane-matches">
+  <div class="table-wrap">
+    <table class="table-dark" id="tableMatches">
+      <thead>
+        <tr>
+          <th style="width: 80px;">Mã trận</th>
+          <th>Người chơi 1 (Đỏ)</th>
+          <th>Người chơi 2 (Xanh)</th>
+          <th>Kết quả</th>
+          <th>Số lượt</th>
+          <th>Biến động Elo</th>
+          <th>Thời gian</th>
+          <th style="text-align: right;">Hành động</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in matches %}
+        <tr>
+          <td><b>#{{ m.id }}</b></td>
+          <td>
+            <strong style="color: var(--p1);">{{ m.player1.username if m.player1 else 'P1' }}</strong>
+          </td>
+          <td>
+            <strong style="color: var(--p2);">{{ m.player2.username if m.player2 else 'P2' }}</strong>
+          </td>
+          <td>
+            {% if m.winner_id == m.player1_id %}
+              <span class="tag red">Đỏ thắng ({{ m.win_reason or 'win' }})</span>
+            {% elif m.winner_id == m.player2_id %}
+              <span class="tag blue">Xanh thắng ({{ m.win_reason or 'win' }})</span>
+            {% elif m.winner_id is none and m.total_turns > 0 %}
+              <span class="tag" style="background: rgba(148, 163, 184, 0.2); color: #94a3b8;">Hòa</span>
+            {% else %}
+              <span class="tag" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">Đang chạy / Lỗi</span>
+            {% endif %}
+          </td>
+          <td>{{ m.total_turns }} lượt</td>
+          <td style="font-size: 12px; font-family: ui-monospace, monospace;">
+            {% if m.p1_elo_before and m.p1_elo_after %}
+              P1: {{ m.p1_elo_before }}→{{ m.p1_elo_after }} | P2: {{ m.p2_elo_before }}→{{ m.p2_elo_after }}
+            {% else %}
+              <span style="color: var(--muted);">-</span>
+            {% endif %}
+          </td>
+          <td style="color: var(--muted); font-size: 12px;">{{ m.created_at.strftime('%Y-%m-%d %H:%M') if m.created_at else '' }}</td>
+          <td style="text-align: right;">
+            <a href="/replay/{{ m.id }}" class="btn btn-sm btn-primary">🎬 Xem Replay</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--muted); padding: 32px;">
+            Chưa có trận đấu nào trong cơ sở dữ liệu.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 2: USERS -->
+<div class="tab-pane" id="pane-users">
+  <div class="table-wrap">
+    <table class="table-dark" id="tableUsers">
+      <thead>
+        <tr>
+          <th style="width: 70px;">ID</th>
+          <th>Tên người chơi</th>
+          <th>Vai trò</th>
+          <th>Điểm Elo</th>
+          <th>Thắng / Thua / Hòa</th>
+          <th>Tỉ lệ thắng</th>
+          <th>Bot nộp</th>
+          <th>Ngày tạo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        {% set total_games = u.wins + u.losses + u.draws %}
+        {% set win_rate = ((u.wins / total_games) * 100)|round(1) if total_games > 0 else 0 %}
+        <tr>
+          <td>#{{ u.id }}</td>
+          <td>
+            <strong style="color: var(--text);">{{ u.username }}</strong>
+            {% if current_user and current_user.id == u.id %}
+              <span class="tag blue" style="margin-left: 6px;">Bạn</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.is_admin %}
+              <span class="tag" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">Admin</span>
+            {% else %}
+              <span class="tag" style="background: rgba(148, 163, 184, 0.2); color: #94a3b8;">User</span>
+            {% endif %}
+          </td>
+          <td><span class="elo-badge">{{ u.elo }}</span></td>
+          <td>
+            <span style="color: #34d399; font-weight: 700;">{{ u.wins }}W</span> /
+            <span style="color: #f87171; font-weight: 700;">{{ u.losses }}L</span> /
+            <span style="color: var(--muted);">{{ u.draws }}D</span>
+          </td>
+          <td><b>{{ win_rate }}%</b> <span style="color: var(--muted); font-size: 11px;">({{ total_games }} trận)</span></td>
+          <td>
+            {% set active_bots = u.bots | selectattr('is_active') | list %}
+            {% if active_bots | length > 0 %}
+              <span style="color: #34d399; font-size: 13px; font-weight: 600;">● {{ active_bots[0].filename }}</span>
+            {% else %}
+              <span style="color: var(--muted); font-size: 13px;">○ Chưa kích hoạt</span>
+            {% endif %}
+          </td>
+          <td style="color: var(--muted); font-size: 12px;">{{ u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 3: BOTS -->
+<div class="tab-pane" id="pane-bots">
+  <div class="table-wrap">
+    <table class="table-dark" id="tableBots">
+      <thead>
+        <tr>
+          <th style="width: 70px;">ID</th>
+          <th>Tên file</th>
+          <th>Chủ sở hữu</th>
+          <th>Trạng thái</th>
+          <th>Đường dẫn file lưu trữ</th>
+          <th>Ngày tải lên</th>
+          <th style="text-align: right;">Mã nguồn</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bots %}
+        <tr>
+          <td>#{{ b.id }}</td>
+          <td><b>{{ b.filename }}</b></td>
+          <td><strong style="color: var(--accent);">{{ b.user.username if b.user else 'Unknown' }}</strong></td>
+          <td>
+            {% if b.is_active %}
+              <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Active (Đang dùng)</span>
+            {% else %}
+              <span class="tag" style="background: rgba(148, 163, 184, 0.2); color: #94a3b8;">Inactive</span>
+            {% endif %}
+          </td>
+          <td style="font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted);">{{ b.filepath }}</td>
+          <td style="color: var(--muted); font-size: 12px;">{{ b.uploaded_at.strftime('%Y-%m-%d %H:%M') if b.uploaded_at else '' }}</td>
+          <td style="text-align: right;">
+            {% if b.source_code %}
+              <button class="btn btn-sm" onclick="showSourceModal('{{ b.filename }}', {{ b.id }})">📄 Xem Code</button>
+              <textarea id="bot-code-{{ b.id }}" style="display: none;">{{ b.source_code }}</textarea>
+            {% else %}
+              <span style="color: var(--muted); font-size: 12px;">Tệp local</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 4: SETTINGS & RAW API -->
+<div class="tab-pane" id="pane-settings">
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+      <h2 class="card-title">⚙️ Cấu hình Giải đấu hiện tại</h2>
+    </div>
+    <div class="table-wrap">
+      <table class="table-dark">
+        <thead>
+          <tr>
+            <th>Thông số cấu hình (Key)</th>
+            <th>Giá trị hiện tại (Value)</th>
+            <th>Ý nghĩa</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>is_portal_open</code></td>
+            <td><b>{{ "MỞ (True)" if settings.is_portal_open else "ĐÓNG (False)" }}</b></td>
+            <td>Trạng thái mở/đóng cổng thách đấu FFA</td>
+          </tr>
+          <tr>
+            <td><code>daily_multiplier_x</code></td>
+            <td><b>x{{ settings.daily_multiplier_x }}</b></td>
+            <td>Hệ số nhân điểm Elo biến động mỗi ngày</td>
+          </tr>
+          <tr>
+            <td><code>max_turns</code></td>
+            <td><b>{{ settings.max_turns }} lượt</b></td>
+            <td>Số lượt đi tối đa trước khi hòa / xét thắng thua</td>
+          </tr>
+          <tr>
+            <td><code>turn_timeout_seconds</code></td>
+            <td><b>{{ settings.turn_timeout_seconds }} giây</b></td>
+            <td>Thời gian tối đa mỗi lượt đi cho 1 bot</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">🔗 Các đường dẫn API JSON mở (Truy xuất trực tiếp)</h2>
+    </div>
+    <p style="color: var(--muted); font-size: 13px; margin: 0 0 16px;">
+      Bất kỳ ai cũng có thể truy xuất dữ liệu dạng JSON qua các API sau mà không cần mật khẩu:
+    </p>
+    <ul style="line-height: 1.8; font-size: 14px;">
+      <li><a href="/api/matches" target="_blank"><code>/api/matches</code></a> - Danh sách toàn bộ các trận đấu gần nhất (kết quả, điểm, người thắng).</li>
+      <li><a href="/api/leaderboard" target="_blank"><code>/api/leaderboard</code></a> - Bảng xếp hạng Elo trực tiếp của tất cả kỳ thủ.</li>
+      <li><a href="/api/health" target="_blank"><code>/api/health</code></a> - Trạng thái hoạt động của máy chủ (Healthcheck).</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Modal Code Viewer -->
+<div class="code-modal-backdrop" id="codeModal">
+  <div class="code-modal">
+    <div class="code-modal-header">
+      <h3 style="margin: 0; font-size: 16px;" id="modalBotTitle">Mã nguồn Bot</h3>
+      <button class="btn btn-sm" onclick="closeSourceModal()">Đóng (✕)</button>
+    </div>
+    <pre class="code-modal-body" id="modalBotCode"></pre>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function switchTab(tabId, el) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+
+    el.classList.add('active');
+    const pane = document.getElementById(`pane-${tabId}`);
+    if (pane) pane.classList.add('active');
+
+    filterActiveTable();
+  }
+
+  function filterActiveTable() {
+    const query = (document.getElementById('tableSearch').value || '').toLowerCase();
+    const activePane = document.querySelector('.tab-pane.active');
+    if (!activePane) return;
+
+    const table = activePane.querySelector('table');
+    if (!table) return;
+
+    const rows = table.querySelectorAll('tbody tr');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      if (text.includes(query)) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    const label = document.getElementById('rowCountLabel');
+    if (label) {
+      label.textContent = `Hiển thị ${visibleCount}/${rows.length} mục`;
+    }
+  }
+
+  function showSourceModal(filename, botId) {
+    const textarea = document.getElementById(`bot-code-${botId}`);
+    const code = textarea ? textarea.value : '// Không có mã nguồn';
+    document.getElementById('modalBotTitle').textContent = `Mã nguồn: ${filename}`;
+    document.getElementById('modalBotCode').textContent = code;
+    document.getElementById('codeModal').style.display = 'flex';
+  }
+
+  function closeSourceModal() {
+    document.getElementById('codeModal').style.display = 'none';
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeSourceModal();
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    filterActiveTable();
+  });
+</script>
+{% endblock %}

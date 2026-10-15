@@ -94,6 +94,62 @@
     </tbody>
   </table>
 </div>
+
+<!-- RECENT MATCHES SECTION -->
+<div style="margin-top: 36px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+  <div>
+    <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 4px;">⚔️ Trận đấu gần đây (Recent Matches)</h2>
+    <div style="font-size: 13px; color: var(--muted);">Bất kỳ ai cũng có thể bấm vào xem lại từng nước đi trực tiếp</div>
+  </div>
+  <a href="/explorer" class="btn btn-sm btn-primary">📊 Khám phá toàn bộ Dữ liệu (Data Explorer) ➔</a>
+</div>
+
+<div class="table-wrap" style="margin-bottom: 24px;">
+  <table class="table-dark">
+    <thead>
+      <tr>
+        <th style="width: 80px;">Trận</th>
+        <th>Người chơi 1 (Đỏ)</th>
+        <th>Người chơi 2 (Xanh)</th>
+        <th>Kết quả</th>
+        <th>Số lượt</th>
+        <th>Thời gian</th>
+        <th style="text-align: right;">Hành động</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in recent_matches %}
+      <tr>
+        <td><b>#{{ m.id }}</b></td>
+        <td><strong style="color: var(--p1);">{{ m.player1.username if m.player1 else 'P1' }}</strong></td>
+        <td><strong style="color: var(--p2);">{{ m.player2.username if m.player2 else 'P2' }}</strong></td>
+        <td>
+          {% if m.winner_id == m.player1_id %}
+            <span class="tag red">Đỏ thắng ({{ m.win_reason or 'win' }})</span>
+          {% elif m.winner_id == m.player2_id %}
+            <span class="tag blue">Xanh thắng ({{ m.win_reason or 'win' }})</span>
+          {% elif m.winner_id is none and m.total_turns > 0 %}
+            <span class="tag" style="background: rgba(148, 163, 184, 0.2); color: #94a3b8;">Hòa</span>
+          {% else %}
+            <span class="tag" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">Đang chạy / Lỗi</span>
+          {% endif %}
+        </td>
+        <td>{{ m.total_turns }} lượt</td>
+        <td style="color: var(--muted); font-size: 12px;">{{ m.created_at.strftime('%Y-%m-%d %H:%M') if m.created_at else '' }}</td>
+        <td style="text-align: right;">
+          <a href="/replay/{{ m.id }}" class="btn btn-sm btn-primary">🎬 Xem Replay</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" style="text-align: center; color: var(--muted); padding: 24px;">
+          Chưa có trận đấu nào được diễn ra. Hãy thách đấu để tạo trận đấu đầu tiên!
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}
 
 {% block scripts %}

@@ -180,3 +180,16 @@ def test_static_files_served_properly(client: TestClient) -> None:
     assert js_res.status_code == 200
     assert "javascript" in js_res.headers["content-type"] or "text/plain" in js_res.headers["content-type"]
     assert "ReplayVisualizer" in js_res.text
+
+
+def test_explorer_page_returns_200(client: TestClient) -> None:
+    """Verify that /explorer returns 200 and renders the public data explorer tabs and tables."""
+    res = client.get("/explorer")
+    assert res.status_code == 200
+    assert "text/html" in res.headers["content-type"]
+    text = res.text
+    assert "explorer" in text.lower() or "dữ liệu" in text.lower()
+    assert "matches" in text.lower() or "trận đấu" in text.lower()
+    assert "users" in text.lower() or "người chơi" in text.lower()
+    assert "bots" in text.lower()
+

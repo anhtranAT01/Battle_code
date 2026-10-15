@@ -108,6 +108,13 @@ def home_page(
             "has_active_bot": has_active,
         })
 
+    recent_matches = (
+        db.query(Match)
+        .order_by(Match.created_at.desc())
+        .limit(10)
+        .all()
+    )
+
     settings = _get_all_settings_dict(db)
     is_portal_open = _is_portal_open_now(db)
 
@@ -116,11 +123,13 @@ def home_page(
         name="index.html",
         context={
             "leaderboard": ranking_list,
+            "recent_matches": recent_matches,
             "is_portal_open": is_portal_open,
             "daily_multiplier_x": settings.get("daily_multiplier_x", 1.5),
             "current_user": current_user,
         },
     )
+
 
 
 @app.get("/login", response_class=HTMLResponse, tags=["web"])
@@ -249,6 +258,40 @@ def bracket_page(
         context={
             "bracket_matches": bracket_matches,
             "current_user": current_user,
+        },
+    )
+
+
+@app.get("/explorer", response_class=HTMLResponse, tags=["web"])
+def explorer_page(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    """Render public data explorer with all matches, users, bots, and settings."""
+    current_user = _get_optional_user(request, db)
+
+    users = db.query(User).order_by(User.id.asc()).all()
+    matches = db.query(Match).order_by(Match.created_at.desc()).all()
+    bots = db.query(Bot).order_by(Bot.uploaded_at.desc()).all()
+    settings = _get_all_settings_dict(db)
+
+    stats = {
+        "total_users": len(users),
+        "total_matches": len(matches),
+        "total_bots": len(bots),
+        "active_bots": sum(1 for b in bots if b.is_active),
+    }
+
+    return templates.TemplateResponse(
+        request=request,
+        name="explorer.html",
+        context={
+            "current_user": current_user,
+            "users": users,
+            "matches": matches,
+            "bots": bots,
+            "settings": settings,
+            "stats": stats,
         },
     )
 
